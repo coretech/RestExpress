@@ -21,8 +21,8 @@ import java.io.InputStreamReader;
 import java.nio.ByteBuffer;
 import java.util.Date;
 
-import org.jboss.netty.buffer.ChannelBuffer;
-import org.jboss.netty.buffer.ChannelBufferInputStream;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufInputStream;
 import org.restexpress.ContentType;
 import org.restexpress.common.util.StringUtils;
 
@@ -88,9 +88,9 @@ extends JsonSerializationProcessor
 	}
 
 	@Override
-	public <T> T deserialize(ChannelBuffer buffer, Class<T> type)
+	public <T> T deserialize(ByteBuf buffer, Class<T> type)
 	{
-    	return gson.fromJson(new InputStreamReader(new ChannelBufferInputStream(buffer), ContentType.CHARSET), type);
+    	return gson.fromJson(new InputStreamReader(new ByteBufInputStream(buffer), ContentType.CHARSET), type);
 	}
 
 	@Override

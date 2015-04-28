@@ -101,12 +101,12 @@ public class ErrorResult
 
 			if (ServiceException.isAssignableFrom(exception))
 			{
-				return new ErrorResult(((ServiceException) exception).getId(), response.getResponseStatus().getCode(), message, causeName);
+				return new ErrorResult(((ServiceException) exception).getId(), response.getResponseStatus().code(), message, causeName);
 			}
 
-			return new ErrorResult(UUID.randomUUID(), response.getResponseStatus().getCode(), message, causeName);
+			return new ErrorResult(UUID.randomUUID(), response.getResponseStatus().code(), message, causeName);
 		}
 
-		return new ErrorResult(UUID.randomUUID(), response.getResponseStatus().getCode(), null, null);
+		return new ErrorResult(UUID.randomUUID(), response.getResponseStatus().code(), null, null);
 	}
 }

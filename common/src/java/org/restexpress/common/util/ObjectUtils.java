@@ -15,6 +15,9 @@
 */
 package org.restexpress.common.util;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+
 /**
  * @author toddf
  * @since Aug 30, 2013
@@ -58,6 +61,52 @@ public class ObjectUtils
     {
 	    return (object instanceof Comparable);
     }
+
+	/**
+	 * Invoke a named method on an object. The method may be non-public.
+	 * This is useful, at the very least, for testing. Note that if you use
+	 * primitive types in the method signature (such as 'int'), this operation
+	 * will not be able to find the requested method. It will instead need to
+	 * have the invoked method signature use the class type (e.g. 'Integer')
+	 * because the 'parms' parameters are of type Object.
+	 * 
+	 * @param name the name of the method to invoke.
+	 * @param object the instance on which to invoke the method.
+	 * @param parms the parameters to use when invoking the method.
+	 * @return the requested return type.
+	 */
+	@SuppressWarnings("unchecked")
+    public static <T> T invokeMethod(String name, Object object, Object... parms)
+	{
+		if (object == null) return null;
+
+		Class<?>[] parmTypes = new Class[parms.length];
+		int i = 0;
+
+		for (Object parameter : parms)
+		{
+			parmTypes[i++] = parameter.getClass();
+		}
+
+		Method m = null;
+        try
+        {
+	        m = object.getClass().getDeclaredMethod(name, parmTypes);
+			m.setAccessible(true);
+        }
+        catch (NoSuchMethodException | SecurityException e)
+        {
+        	throw new RuntimeException(e);
+        }
+		try
+        {
+	        return (T) m.invoke(object, parms);
+        }
+        catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e)
+        {
+        	throw new RuntimeException(e);
+        }
+	}
 
 	private ObjectUtils()
 	{

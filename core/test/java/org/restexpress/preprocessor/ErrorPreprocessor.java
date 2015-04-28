@@ -25,9 +25,24 @@ import org.restexpress.pipeline.Preprocessor;
 public class ErrorPreprocessor
 implements Preprocessor
 {
+	private boolean shouldThrow = true;
+
 	@Override
 	public void process(Request request)
 	{
-		throw new RuntimeException("ErrorPreprocessor");
+		if (shouldThrow)
+		{
+			throw new RuntimeException("ErrorPreprocessor");
+		}
+	}
+
+	public boolean shouldThrow()
+	{
+		return shouldThrow;
+	}
+
+	public void shouldThrow(boolean value)
+	{
+		this.shouldThrow = value;
 	}
 }

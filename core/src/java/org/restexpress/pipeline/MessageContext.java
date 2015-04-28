@@ -20,7 +20,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Map.Entry;
 
-import org.jboss.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.handler.codec.http.HttpResponseStatus;
 import org.restexpress.ContentType;
 import org.restexpress.Parameters;
 import org.restexpress.Request;

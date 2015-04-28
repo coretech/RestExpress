@@ -1,11 +1,11 @@
 package org.restexpress.route;
 
-import static org.jboss.netty.handler.codec.http.HttpMethod.DELETE;
-import static org.jboss.netty.handler.codec.http.HttpMethod.GET;
-import static org.jboss.netty.handler.codec.http.HttpMethod.HEAD;
-import static org.jboss.netty.handler.codec.http.HttpMethod.OPTIONS;
-import static org.jboss.netty.handler.codec.http.HttpMethod.POST;
-import static org.jboss.netty.handler.codec.http.HttpMethod.PUT;
+import static io.netty.handler.codec.http.HttpMethod.DELETE;
+import static io.netty.handler.codec.http.HttpMethod.GET;
+import static io.netty.handler.codec.http.HttpMethod.HEAD;
+import static io.netty.handler.codec.http.HttpMethod.OPTIONS;
+import static io.netty.handler.codec.http.HttpMethod.POST;
+import static io.netty.handler.codec.http.HttpMethod.PUT;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.jboss.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.HttpMethod;
 import org.restexpress.Request;
 import org.restexpress.Response;
 import org.restexpress.common.exception.ConfigurationException;
@@ -292,7 +292,7 @@ public abstract class RouteBuilder
 		for (Route route : routes)
 		{
 			uriMeta.addAllParameters(route.getUrlParameters());
-			metadata.addMethod(route.getMethod().getName());
+			metadata.addMethod(route.getMethod().name());
 		}
 
 		metadata.setUri(uriMeta);

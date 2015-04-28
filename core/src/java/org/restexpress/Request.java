@@ -19,6 +19,7 @@ package org.restexpress;
 
 import java.io.InputStream;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.net.URLDecoder;
 import java.nio.ByteBuffer;
 import java.util.Collection;
@@ -29,14 +30,14 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.jboss.netty.buffer.ChannelBuffer;
-import org.jboss.netty.buffer.ChannelBufferInputStream;
-import org.jboss.netty.channel.MessageEvent;
-import org.jboss.netty.handler.codec.http.HttpHeaders;
-import org.jboss.netty.handler.codec.http.HttpMethod;
-import org.jboss.netty.handler.codec.http.HttpRequest;
-import org.jboss.netty.handler.codec.http.HttpVersion;
-import org.jboss.netty.handler.codec.http.QueryStringDecoder;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufInputStream;
+import io.netty.handler.codec.http.FullHttpRequest;
+import io.netty.handler.codec.http.HttpHeaders;
+import io.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.HttpRequest;
+import io.netty.handler.codec.http.HttpVersion;
+import io.netty.handler.codec.http.QueryStringDecoder;
 import org.restexpress.exception.BadRequestException;
 import org.restexpress.route.Route;
 import org.restexpress.route.RouteResolver;
@@ -55,7 +56,7 @@ public class Request
 
 	// SECTION: INSTANCE VARIABLES
 
-	private HttpRequest httpRequest;
+	private FullHttpRequest httpRequest;
 	private HttpVersion httpVersion;
 	private InetSocketAddress remoteAddress;
 	private RouteResolver routeResolver;
@@ -71,12 +72,12 @@ public class Request
 	
 	// SECTION: CONSTRUCTOR
 
-	public Request(HttpRequest request, RouteResolver routeResolver)
+	public Request(FullHttpRequest request, RouteResolver routeResolver)
 	{
 		this(request, routeResolver, null);
 	}
 
-	public Request(HttpRequest request, RouteResolver routeResolver, SerializationProvider serializationProvider)
+	public Request(FullHttpRequest request, RouteResolver routeResolver, SerializationProvider serializationProvider)
 	{
 		super();
 		this.httpRequest = request;
@@ -90,10 +91,10 @@ public class Request
 		determineEffectiveHttpMethod(request);
 	}
 
-	public Request(MessageEvent event, RouteResolver routes, SerializationProvider serializationProvider)
+	public Request(InetSocketAddress socketAddress, FullHttpRequest request, RouteResolver routes, SerializationProvider serializationProvider)
 	{
-		this((HttpRequest) event.getMessage(), routes, serializationProvider);
-		this.remoteAddress = (InetSocketAddress) event.getRemoteAddress();
+		this(request, routes, serializationProvider);
+		this.remoteAddress = socketAddress;
 	}
 
 
@@ -150,9 +151,9 @@ public class Request
 		return getEffectiveHttpMethod().equals(HttpMethod.PUT);
 	}
 
-	public ChannelBuffer getBody()
+	public ByteBuf getBody()
     {
-		return httpRequest.getContent();
+		return httpRequest.content();
     }
 
 	/**
@@ -223,7 +224,7 @@ public class Request
 	 */
 	public InputStream getBodyAsStream()
 	{
-		return new ChannelBufferInputStream(getBody());
+		return new ByteBufInputStream(getBody());
 	}
 
 	/**
@@ -234,15 +235,15 @@ public class Request
 	 */
 	public ByteBuffer getBodyAsByteBuffer()
 	{
-		return getBody().toByteBuffer();
+		return getBody().nioBuffer();
 	}
 
 	/**
-	 * Returns the byte array underlying the Netty ChannelBuffer for this request.
-	 * However, if the ChannelBuffer returns false to hasArray(), this
+	 * Returns the byte array underlying the Netty ByteBuf for this request.
+	 * However, if the ByteBuf returns false to hasArray(), this
 	 * method returns null.
 	 * 
-	 * @return an array of byte, or null, if the ChannelBuffer is not backed by a byte array.
+	 * @return an array of byte, or null, if the ByteBuf is not backed by a byte array.
 	 */
 	public byte[] getBodyAsBytes()
 	{
@@ -272,16 +273,16 @@ public class Request
 		if (shouldDecode)
 		{
 			QueryStringDecoder qsd = new QueryStringDecoder(getBody().toString(ContentType.CHARSET), ContentType.CHARSET, false);
-			return qsd.getParameters();			
+			return qsd.parameters();
 		}
 
 		QueryStringParser qsp = new QueryStringParser(getBody().toString(ContentType.CHARSET), false);
 		return qsp.getParameters();
 	}
 
-	public void setBody(ChannelBuffer body)
+	public void setBody(ByteBuf body)
     {
-		httpRequest.setContent(body);
+		httpRequest.content().setBytes(0, body);
     }
 
 	public void clearHeaders()
@@ -337,7 +338,7 @@ public class Request
 	 * 
 	 * @param name
 	 * @return the requested header
-	 * @throws BadRequestException(message) if 'name' doesn't exist as a header.
+	 * @throws BadRequestException if 'name' doesn't exist as a header.
 	 */
 	public String getHeader(String name, String message)
 	{
@@ -492,7 +493,14 @@ public class Request
 
 	public boolean isChunked()
 	{
-		return httpRequest.isChunked();
+        //This is the logic the Netty 3.9.x used to determine if data was chunked.  There may be a methodology more
+        // inline with Netty 4.x.x to determine if the request is chunked.  TODO: Implement updated logic.
+        for (String header : httpRequest.headers().getAll(HttpHeaders.Names.TRANSFER_ENCODING)) {
+            if (HttpHeaders.Values.CHUNKED.equalsIgnoreCase(header)) {
+                return true;
+            }
+        }
+        return false;
 	}
 	
 	/**
@@ -522,7 +530,7 @@ public class Request
 	 */
 	public String getProtocol()
 	{
-		return httpRequest.getProtocolVersion().getProtocolName().toLowerCase();
+		return httpRequest.getProtocolVersion().protocolName().toLowerCase();
 	}
 	
 	/**
@@ -642,7 +650,7 @@ public class Request
 	
 	public boolean isHttpVersion1_0()
 	{
-		return ((httpVersion.getMajorVersion() == 1) && (httpVersion.getMinorVersion() == 0));
+		return ((httpVersion.majorVersion() == 1) && (httpVersion.minorVersion() == 0));
 	}
 	
 	public InetSocketAddress getRemoteAddress()
@@ -691,8 +699,6 @@ public class Request
 	 * If the request HTTP method is post, allow a query string parameter to determine
 	 * the request HTTP method of the post (e.g. _method=DELETE or _method=PUT).  This
 	 * supports DELETE and PUT from the browser.
-	 * 
-	 * @param parameters
 	 */
 	private void determineEffectiveHttpMethod(HttpRequest request)
 	{

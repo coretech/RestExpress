@@ -17,7 +17,7 @@ package org.restexpress.serialization;
 
 import java.nio.ByteBuffer;
 
-import org.jboss.netty.handler.codec.http.HttpHeaders;
+import io.netty.handler.codec.http.HttpHeaders;
 import org.restexpress.Request;
 import org.restexpress.Response;
 import org.restexpress.response.ResponseProcessor;

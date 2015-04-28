@@ -20,7 +20,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.jboss.netty.handler.codec.http.HttpHeaders;
+import io.netty.handler.codec.http.HttpHeaders;
 import org.restexpress.Request;
 import org.restexpress.Response;
 import org.restexpress.common.exception.ConfigurationException;

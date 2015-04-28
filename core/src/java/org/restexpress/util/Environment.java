@@ -34,6 +34,17 @@ public abstract class Environment
 	private static final String PROPERTIES_FILENAME = "/environment.properties";
 	private static final String DEFAULT_ENVIRONMENT = "dev";
 
+	public static <T extends Environment> T load(String[] args, Class<T> type)
+    throws FileNotFoundException, IOException
+    {
+	    if (args.length > 0)
+		{
+			return from(args[0], type);
+		}
+
+	    return fromDefault(type);
+    }
+
 	public static <T extends Environment> T fromDefault(Class<T> type)
 	throws FileNotFoundException, IOException
 	{

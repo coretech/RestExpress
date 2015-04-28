@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.jboss.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.HttpMethod;
 import org.restexpress.domain.metadata.RouteMetadata;
 import org.restexpress.route.Route;
 import org.restexpress.route.RouteBuilder;
@@ -39,7 +39,7 @@ extends RouteBuilder
 	/**
 	 * @param uri
 	 * @param controller
-	 * @param routeType
+	 * @param defaults
 	 */
 	public ParameterizedRouteBuilder(String uri, Object controller,
 	    RouteDefaults defaults)

@@ -16,16 +16,17 @@
 package org.restexpress.query;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import io.netty.handler.codec.http.DefaultFullHttpRequest;
+import io.netty.handler.codec.http.FullHttpRequest;
+import io.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.HttpVersion;
 
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.jboss.netty.handler.codec.http.DefaultHttpRequest;
-import org.jboss.netty.handler.codec.http.HttpMethod;
-import org.jboss.netty.handler.codec.http.HttpRequest;
-import org.jboss.netty.handler.codec.http.HttpVersion;
 import org.junit.Test;
 import org.restexpress.Request;
 import org.restexpress.common.query.FilterCallback;
@@ -43,7 +44,7 @@ public class QueryFiltersTest
 	@Test
 	public void shouldParseEqualityOperatorFromQueryString()
 	{
-		HttpRequest httpRequest = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "http://www.example.com/somethings?filter=name:=:todd|description:!=:amazing");
+		FullHttpRequest httpRequest = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "http://www.example.com/somethings?filter=name:=:todd|description:!=:amazing");
 		Request request = new Request(httpRequest, null);
 		QueryFilter f = QueryFilters.parseFrom(request);
 		assertTrue(f.hasFilters());
@@ -59,7 +60,7 @@ public class QueryFiltersTest
 	@Test
 	public void shouldParseLessThanOperatorsFromQueryString()
 	{
-		HttpRequest httpRequest = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "http://www.example.com/somethings?filter=name:<:todd|description:<=:amazing");
+		FullHttpRequest httpRequest = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "http://www.example.com/somethings?filter=name:<:todd|description:<=:amazing");
 		Request request = new Request(httpRequest, null);
 		QueryFilter f = QueryFilters.parseFrom(request);
 		assertTrue(f.hasFilters());
@@ -75,7 +76,7 @@ public class QueryFiltersTest
 	@Test
 	public void shouldParseGreaterThanOperatorsFromQueryString()
 	{
-		HttpRequest httpRequest = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "http://www.example.com/somethings?filter=name:>=:todd|description:>:amazing");
+		FullHttpRequest httpRequest = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "http://www.example.com/somethings?filter=name:>=:todd|description:>:amazing");
 		Request request = new Request(httpRequest, null);
 		QueryFilter f = QueryFilters.parseFrom(request);
 		assertTrue(f.hasFilters());
@@ -91,7 +92,7 @@ public class QueryFiltersTest
 	@Test
 	public void shouldParseQueryString()
 	{
-		HttpRequest httpRequest = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "http://www.example.com/somethings?filter=name::todd|description::amazing");
+		FullHttpRequest httpRequest = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "http://www.example.com/somethings?filter=name::todd|description::amazing");
 		Request request = new Request(httpRequest, null);
 		QueryFilter f = QueryFilters.parseFrom(request);
 		assertTrue(f.hasFilters());
@@ -107,7 +108,7 @@ public class QueryFiltersTest
 	@Test
 	public void shouldParseFilterHeader()
 	{
-		HttpRequest httpRequest = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "http://www.example.com/somethings");
+		FullHttpRequest httpRequest = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "http://www.example.com/somethings");
 		httpRequest.headers().add("filter", "name::todd|description::amazing");
 		Request request = new Request(httpRequest, null);
 		QueryFilter f = QueryFilters.parseFrom(request);
@@ -124,7 +125,7 @@ public class QueryFiltersTest
 	@Test
 	public void shouldAllowSupportedFilterProperties()
 	{
-		HttpRequest httpRequest = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "http://www.example.com/somethings");
+		FullHttpRequest httpRequest = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "http://www.example.com/somethings");
 		httpRequest.headers().add("filter", "name:=:todd|description:*:amazing");
 		Request request = new Request(httpRequest, null);
 		QueryFilter f = QueryFilters.parseFrom(request, Arrays.asList(new String[] {"name", "description"}));
@@ -138,10 +139,29 @@ public class QueryFiltersTest
 		assertEquals(FilterOperator.STARTS_WITH, callback.get("description").getOperator());
 	}
 
+	@Test
+	public void shouldParseInOperatorsFromQueryString()
+	{
+		FullHttpRequest httpRequest = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "http://www.example.com/somethings?filter=name:IN:todd,fred,rick");
+		Request request = new Request(httpRequest, null);
+		QueryFilter f = QueryFilters.parseFrom(request);
+		assertTrue(f.hasFilters());
+		FCallback callback = new FCallback();
+		f.iterate(callback);
+		assertEquals(1, callback.getFilterCount());
+		assertEquals(FilterOperator.IN, callback.get("name").getOperator());
+		String[] ins = (String[]) callback.get("name").getValue();
+		assertNotNull(ins);
+		assertEquals(3, ins.length);
+		assertEquals("todd", ins[0]);
+		assertEquals("fred", ins[1]);
+		assertEquals("rick", ins[2]);
+	}
+
 	@Test(expected=BadRequestException.class)
 	public void shouldThrowOnInvalidFilter()
 	{
-		HttpRequest httpRequest = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "http://www.example.com/somethings");
+		FullHttpRequest httpRequest = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "http://www.example.com/somethings");
 		httpRequest.headers().add("filter", "name::todd|description::amazing");
 		Request request = new Request(httpRequest, null);
 		QueryFilters.parseFrom(request, Arrays.asList(new String[] {"abc", "def", "ghi"}));
@@ -150,7 +170,7 @@ public class QueryFiltersTest
 	@Test
 	public void shouldAllowSingleFilter()
 	{
-		HttpRequest httpRequest = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "http://www.example.com/somethings");
+		FullHttpRequest httpRequest = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "http://www.example.com/somethings");
 		httpRequest.headers().add("filter", "abc::todd");
 		Request request = new Request(httpRequest, null);
 		QueryFilter f = QueryFilters.parseFrom(request, Arrays.asList(new String[] {"abc", "def", "ghi"}));
@@ -160,7 +180,7 @@ public class QueryFiltersTest
 	@Test(expected=BadRequestException.class)
 	public void shouldThrowOnSingleInvalidFilter()
 	{
-		HttpRequest httpRequest = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "http://www.example.com/somethings");
+		FullHttpRequest httpRequest = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "http://www.example.com/somethings");
 		httpRequest.headers().add("filter", "name::todd");
 		Request request = new Request(httpRequest, null);
 		QueryFilters.parseFrom(request, Arrays.asList(new String[] {"abc", "def", "ghi"}));

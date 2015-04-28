@@ -13,7 +13,6 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.zip.DeflaterOutputStream;
 import java.util.zip.GZIPInputStream;
@@ -37,16 +36,16 @@ import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
 import org.restexpress.common.query.QueryRange;
-import org.restexpress.domain.JsendResultWrapper;
 import org.restexpress.pipeline.SimpleConsoleLogMessageObserver;
+import org.restexpress.postprocessor.TestPostprocessor;
+import org.restexpress.preprocessor.ErrorPreprocessor;
 import org.restexpress.response.ErrorResponseWrapper;
-import org.restexpress.response.JsendResponseWrapper;
 import org.restexpress.serialization.AbstractSerializationProvider;
-import org.restexpress.serialization.DefaultSerializationProvider;
+import org.restexpress.serialization.NullSerializationProvider;
 import org.restexpress.serialization.json.JacksonJsonProcessor;
 import org.restexpress.serialization.xml.XstreamXmlProcessor;
 
-public class RestExpressServerTest
+public class AltRestExpressServerTest
 {
 	private static final int DEFAULT_PORT = 8801;
 	private static final String SERVER_HOST = "http://localhost:" + DEFAULT_PORT;
@@ -71,24 +70,26 @@ public class RestExpressServerTest
 	private static final String PATTERN_EXCEPTION_STRING = "/strings/exception";
 	private static final String PATTERN_EXCEPTION_LITTLE_O = "/objects/exception";
 	private static final String ECHO_PATTERN = "/echo";
+	private static final String URL_EXCEPTION_LITTLE_O = SERVER_HOST + PATTERN_EXCEPTION_LITTLE_O;
 	private static final String URL_ECHO = SERVER_HOST + ECHO_PATTERN;
 
 	private static final HttpClient CLIENT = new DefaultHttpClient();
-	private static final AbstractSerializationProvider DEFAULT_SERIALIZER = new DefaultSerializationProvider();
+	private static final AbstractSerializationProvider DEFAULT_SERIALIZER = new NullSerializationProvider();
 
 	static
 	{
-		DEFAULT_SERIALIZER.add(new JacksonJsonProcessor(Format.WRAPPED_JSON), new JsendResponseWrapper());
-		DEFAULT_SERIALIZER.add(new XstreamXmlProcessor(Format.WRAPPED_XML), new JsendResponseWrapper());
+		JacksonJsonProcessor jackson = new JacksonJsonProcessor(Format.JSON);
+		jackson.addSupportedMediaTypes(ContentType.HAL_JSON);
+		DEFAULT_SERIALIZER.add(jackson, new ErrorResponseWrapper());
 
-		XstreamXmlProcessor xmlProc = new XstreamXmlProcessor();
-		xmlProc.setSupportedFormats(Collections.<String>emptyList());
-		xmlProc.addSupportedMediaTypes(ContentType.HAL_XML);
-		DEFAULT_SERIALIZER.add(xmlProc, new ErrorResponseWrapper());
-
+		XstreamXmlProcessor xstream = new XstreamXmlProcessor(Format.XML);
+		xstream.addSupportedMediaTypes(ContentType.HAL_XML);
+		DEFAULT_SERIALIZER.add(xstream, new ErrorResponseWrapper());
 	}
 
 	private static RestExpress SERVER;
+	private static final TestPostprocessor POSTPROCESSOR = new TestPostprocessor();
+	private static final ErrorPreprocessor ERROR_PREPROCESSOR = new ErrorPreprocessor();
 
 	public RestExpress createServer()
 	{
@@ -97,6 +98,8 @@ public class RestExpressServerTest
 		StringTestController stringTestController = new StringTestController();
 		ObjectTestController objectTestController = new ObjectTestController();
 		EchoTestController echoTestController = new EchoTestController();
+		server.addPreprocessor(ERROR_PREPROCESSOR);
+		server.addFinallyProcessor(POSTPROCESSOR);
 
 		server.uri(URL_PATTERN1, stringTestController);
 		server.uri(URL_PATTERN2, stringTestController);
@@ -127,6 +130,9 @@ public class RestExpressServerTest
 	@Before
 	public void ensureServerRunning()
 	{
+		POSTPROCESSOR.resetCallCount();
+		ERROR_PREPROCESSOR.shouldThrow(false);
+
 		if (SERVER == null)
 		{
 			SERVER = createServer();
@@ -279,7 +285,11 @@ public class RestExpressServerTest
 			HttpEntity entity = response.getEntity();
 			assertTrue(entity.getContentLength() > 0l);
 			assertEquals(ContentType.JSON, entity.getContentType().getValue());
-			assertEquals("\"" + URL3_PLAIN + "\"", EntityUtils.toString(entity));
+			String json = EntityUtils.toString(entity);
+			assertTrue(json.startsWith("{\"errorId\":"));
+			assertTrue(json.contains("\"httpStatus\":405"));
+			assertTrue(json.contains("\"message\":\"" + URL3_PLAIN + "\""));
+			assertTrue(json.contains("\"errorType\":\"MethodNotAllowedException\""));
 			String methods = response.getHeaders(HttpHeaders.Names.ALLOW)[0].getValue();
 			assertTrue(methods.contains("GET"));
 			assertTrue(methods.contains("POST"));
@@ -303,7 +313,12 @@ public class RestExpressServerTest
 			HttpEntity entity = response.getEntity();
 			assertTrue(entity.getContentLength() > 0l);
 			assertEquals(ContentType.JSON, entity.getContentType().getValue());
-			assertEquals("\"" + URL3_PLAIN + "?_ignore_http_status=true\"", EntityUtils.toString(entity));
+			String json = EntityUtils.toString(entity);
+			assertNotNull(json);
+			assertTrue(json.startsWith("{\"errorId\":"));
+			assertTrue(json.contains("\"httpStatus\":405"));
+			assertTrue(json.contains("\"message\":\"" + URL3_PLAIN + "?_ignore_http_status=true\""));
+			assertTrue(json.contains("\"errorType\":\"MethodNotAllowedException\""));
 			String methods = response.getHeaders(HttpHeaders.Names.ALLOW)[0].getValue();
 			assertTrue(methods.contains("GET"));
 			assertTrue(methods.contains("POST"));
@@ -326,7 +341,11 @@ public class RestExpressServerTest
 			HttpEntity entity = response.getEntity();
 			assertTrue(entity.getContentLength() > 0l);
 			assertEquals(ContentType.JSON, entity.getContentType().getValue());
-			assertEquals("\"Unresolvable URL: " + SERVER_HOST + "/x/y/z.json\"", EntityUtils.toString(entity));
+			String json = EntityUtils.toString(entity);
+			assertTrue(json.startsWith("{\"errorId\":"));
+			assertTrue(json.contains("\"httpStatus\":404"));
+			assertTrue(json.contains("\"message\":\"Unresolvable URL: " + SERVER_HOST + "/x/y/z.json\""));
+			assertTrue(json.contains("\"errorType\":\"NotFoundException\""));
 		}
 		finally
 		{
@@ -428,108 +447,12 @@ public class RestExpressServerTest
 			HttpEntity entity = response.getEntity();
 			assertTrue(entity.getContentLength() > 0l);
 			assertEquals(ContentType.JSON, entity.getContentType().getValue());
-			assertEquals("\"Requested representation format not supported: JSON. Supported formats: json, wxml, wjson, xml\"",
-			    EntityUtils.toString(entity));
-		}
-		finally
-		{
-			request.releaseConnection();
-		}
-	}
-
-	@Test
-	public void shouldReturnWrappedJsonUsingFormat() throws Exception
-	{
-		HttpGet request = new HttpGet(URL1_PLAIN + ".wjson");
-
-		try
-		{
-			HttpResponse response = (HttpResponse) CLIENT.execute(request);
-			assertEquals(HttpResponseStatus.OK.code(), response.getStatusLine().getStatusCode());
-			HttpEntity entity = response.getEntity();
-			assertTrue(entity.getContentLength() > 0l);
-			assertEquals(ContentType.JSON, entity.getContentType().getValue());
-			String result = EntityUtils.toString(entity);
-			assertTrue(result.contains("\"code\":200"));
-			assertTrue(result.contains("\"status\":\"success\""));
-			String data = extractJson(result);
-			assertEquals("\"read\"", data);
-		}
-		finally
-		{
-			request.releaseConnection();
-		}
-	}
-
-	@Test
-	public void shouldReturnWrappedJsonAsDefault() throws Exception
-	{
-		DEFAULT_SERIALIZER.setDefaultFormat(Format.WRAPPED_JSON);
-		HttpGet request = new HttpGet(URL1_PLAIN);
-
-		try
-		{
-			HttpResponse response = (HttpResponse) CLIENT.execute(request);
-			assertEquals(HttpResponseStatus.OK.code(), response.getStatusLine().getStatusCode());
-			HttpEntity entity = response.getEntity();
-			assertTrue(entity.getContentLength() > 0l);
-			assertEquals(ContentType.JSON, entity.getContentType().getValue());
-			String result = EntityUtils.toString(entity);
-			assertTrue(result.contains("\"code\":200"));
-			assertTrue(result.contains("\"status\":\"success\""));
-			String data = extractJson(result);
-			assertEquals("\"read\"", data);
-		}
-		finally
-		{
-			request.releaseConnection();
-		}
-	}
-
-	@Test
-	public void shouldReturnWrappedXmlUsingFormat() throws Exception
-	{
-		HttpGet request = new HttpGet(URL1_PLAIN + ".wxml");
-
-		try
-		{
-			HttpResponse response = (HttpResponse) CLIENT.execute(request);
-			assertEquals(HttpResponseStatus.OK.code(), response.getStatusLine().getStatusCode());
-			HttpEntity entity = response.getEntity();
-			assertTrue(entity.getContentLength() > 0l);
-			assertEquals(ContentType.XML, entity.getContentType().getValue());
-			String entityString = EntityUtils.toString(entity);
-			assertTrue(entityString.startsWith("<response>"));
-			assertTrue(entityString.contains("<code>200</code>"));
-			assertTrue(entityString.contains("<status>success</status>"));
-			assertTrue(entityString.contains("<data class=\"string\">read</data>"));
-			assertTrue(entityString.endsWith("</response>"));
-		}
-		finally
-		{
-			request.releaseConnection();
-		}
-	}
-
-	@Test
-	public void shouldReturnWrappedXmlAsDefault() throws Exception
-	{
-		DEFAULT_SERIALIZER.setDefaultFormat(Format.WRAPPED_XML);
-		HttpGet request = new HttpGet(URL1_PLAIN);
-
-		try
-		{
-			HttpResponse response = (HttpResponse) CLIENT.execute(request);
-			assertEquals(HttpResponseStatus.OK.code(), response.getStatusLine().getStatusCode());
-			HttpEntity entity = response.getEntity();
-			assertTrue(entity.getContentLength() > 0l);
-			assertEquals(ContentType.XML, entity.getContentType().getValue());
-			String entityString = EntityUtils.toString(entity);
-			assertTrue(entityString.startsWith("<response>"));
-			assertTrue(entityString.contains("<code>200</code>"));
-			assertTrue(entityString.contains("<status>success</status>"));
-			assertTrue(entityString.contains("<data class=\"string\">read</data>"));
-			assertTrue(entityString.endsWith("</response>"));
+			String json = EntityUtils.toString(entity);
+			assertNotNull(json);
+			assertTrue(json.startsWith("{\"errorId\":"));
+			assertTrue(json.contains("\"httpStatus\":400"));
+			assertTrue(json.contains("\"message\":\"Requested representation format not supported: JSON. Supported formats: json, xml\""));
+			assertTrue(json.contains("\"errorType\":\"BadRequestException\""));
 		}
 		finally
 		{
@@ -569,9 +492,11 @@ public class RestExpressServerTest
 			HttpEntity entity = response.getEntity();
 			assertTrue(entity.getContentLength() > 0l);
 			assertEquals(ContentType.JSON, entity.getContentType().getValue());
-			assertEquals(
-			    "\"Requested representation format not supported: xyz. Supported formats: json, wxml, wjson, xml\"",
-			    EntityUtils.toString(entity));
+			String json = EntityUtils.toString(entity);
+			assertTrue(json.startsWith("{\"errorId\":"));
+			assertTrue(json.contains("\"httpStatus\":400"));
+			assertTrue(json.contains("\"message\":\"Requested representation format not supported: xyz. Supported formats: json, xml\""));
+			assertTrue(json.contains("\"errorType\":\"BadRequestException\""));
 		}
 		finally
 		{
@@ -592,9 +517,12 @@ public class RestExpressServerTest
 			HttpEntity entity = response.getEntity();
 			assertTrue(entity.getContentLength() > 0l);
 			assertEquals(ContentType.JSON, entity.getContentType().getValue());
-			assertEquals(
-			    "\"Supported Media Types: application/json; charset=UTF-8, application/javascript; charset=UTF-8, text/javascript; charset=UTF-8, application/xml; charset=UTF-8, text/xml; charset=UTF-8, application/hal+xml; charset=UTF-8\"",
-			    EntityUtils.toString(entity));
+			String json = EntityUtils.toString(entity);
+			assertNotNull(json);
+			assertTrue(json.startsWith("{\"errorId\":"));
+			assertTrue(json.contains("\"httpStatus\":406"));
+			assertTrue(json.contains("\"message\":\"Supported Media Types: application/json; charset=UTF-8, application/javascript; charset=UTF-8, text/javascript; charset=UTF-8, application/hal+json; charset=UTF-8, application/xml; charset=UTF-8, text/xml; charset=UTF-8, application/hal+xml; charset=UTF-8\""));
+			assertTrue(json.contains("\"errorType\":\"NotAcceptableException\""));
 		}
 		finally
 		{
@@ -665,64 +593,12 @@ public class RestExpressServerTest
 			assertTrue(entity.getContentLength() > 0l);
 			assertEquals(ContentType.JSON, entity.getContentType().getValue());
 			assertNull(response.getFirstHeader(HttpHeaders.Names.CONTENT_RANGE));
-			assertEquals(
-			    "\"Supported Media Types: application/json; charset=UTF-8, application/javascript; charset=UTF-8, text/javascript; charset=UTF-8, application/xml; charset=UTF-8, text/xml; charset=UTF-8, application/hal+xml; charset=UTF-8\"",
-			    EntityUtils.toString(entity));
-		}
-		finally
-		{
-			request.releaseConnection();
-		}
-	}
-
-	@Test
-	public void shouldSerializeObjectAsWrappedJson() throws Exception
-	{
-		HttpGet request = new HttpGet(LITTLE_O_URL + ".wjson");
-
-		try
-		{
-			HttpResponse response = (HttpResponse) CLIENT.execute(request);
-			assertEquals(HttpResponseStatus.OK.code(), response.getStatusLine()
-			    .getStatusCode());
-			HttpEntity entity = response.getEntity();
-			assertTrue(entity.getContentLength() > 0l);
-			assertEquals(ContentType.JSON, entity.getContentType().getValue());
-			String result = EntityUtils.toString(entity);
-			assertTrue(result.contains("\"code\":200"));
-			assertTrue(result.contains("\"status\":\"success\""));
-			String data = extractJson(result);
-			LittleO o = DEFAULT_SERIALIZER.getSerializer(Format.WRAPPED_JSON).deserialize(
-			    data, LittleO.class);
-			verifyObject(o);
-		}
-		finally
-		{
-			request.releaseConnection();
-		}
-	}
-
-	@Test
-	public void shouldSerializeListAsWrappedJson() throws Exception
-	{
-		HttpGet request = new HttpGet(LITTLE_OS_URL + ".wjson");
-
-		try
-		{
-			HttpResponse response = (HttpResponse) CLIENT.execute(request);
-			assertEquals(HttpResponseStatus.OK.code(), response.getStatusLine().getStatusCode());
-			HttpEntity entity = response.getEntity();
-			assertTrue(entity.getContentLength() > 0l);
-			assertEquals(ContentType.JSON, entity.getContentType().getValue());
-			Header range = response.getFirstHeader(HttpHeaders.Names.CONTENT_RANGE);
-			assertNotNull(range);
-			assertEquals("items 0-2/3", range.getValue());
-			String result = EntityUtils.toString(entity);
-			assertTrue(result.contains("\"code\":200"));
-			assertTrue(result.contains("\"status\":\"success\""));
-			String data = extractJson(result);
-			LittleO[] o = DEFAULT_SERIALIZER.getSerializer(Format.WRAPPED_JSON).deserialize(data, LittleO[].class);
-			verifyList(o);
+			String json = EntityUtils.toString(entity);
+			assertNotNull(json);
+			assertTrue(json.startsWith("{\"errorId\":"));
+			assertTrue(json.contains("\"httpStatus\":406"));
+			assertTrue(json.contains("\"message\":\"Supported Media Types: application/json; charset=UTF-8, application/javascript; charset=UTF-8, text/javascript; charset=UTF-8, application/hal+json; charset=UTF-8, application/xml; charset=UTF-8, text/xml; charset=UTF-8, application/hal+xml; charset=UTF-8\""));
+			assertTrue(json.contains("\"errorType\":\"NotAcceptableException\""));
 		}
 		finally
 		{
@@ -780,49 +656,24 @@ public class RestExpressServerTest
 	}
 
 	@Test
-	public void shouldSerializeObjectAsWrappedXml() throws Exception
+	public void shouldSerializeApplicationHalJson() throws Exception
 	{
-		HttpGet request = new HttpGet(LITTLE_O_URL + ".wxml");
+		HttpGet request = new HttpGet(LITTLE_OS_URL);
 
 		try
 		{
+			request.addHeader(HttpHeaders.Names.ACCEPT, "application/hal+json");
 			HttpResponse response = (HttpResponse) CLIENT.execute(request);
 			assertEquals(HttpResponseStatus.OK.code(), response.getStatusLine().getStatusCode());
 			HttpEntity entity = response.getEntity();
 			assertTrue(entity.getContentLength() > 0l);
-			assertEquals(ContentType.XML, entity.getContentType().getValue());
-			String entityString = EntityUtils.toString(entity);
-			JsendResultWrapper o = DEFAULT_SERIALIZER.getSerializer(Format.WRAPPED_XML)
-			    .deserialize(entityString, JsendResultWrapper.class);
-			assertEquals(200, o.getCode());
-			assertEquals("success", o.getStatus());
-			verifyObject((LittleO) o.getData());
-		}
-		finally
-		{
-			request.releaseConnection();
-		}
-	}
-
-	@Test
-	public void shouldSerializeListAsWrappedXml() throws Exception
-	{
-		HttpGet request = new HttpGet(LITTLE_OS_URL + ".wxml");
-
-		try
-		{
-			HttpResponse response = (HttpResponse) CLIENT.execute(request);
-			assertEquals(HttpResponseStatus.OK.code(), response.getStatusLine().getStatusCode());
-			HttpEntity entity = response.getEntity();
-			assertTrue(entity.getContentLength() > 0l);
-			assertEquals(ContentType.XML, entity.getContentType().getValue());
+			assertEquals(ContentType.HAL_JSON, entity.getContentType().getValue());
 			Header range = response.getFirstHeader(HttpHeaders.Names.CONTENT_RANGE);
 			assertNotNull(range);
 			assertEquals("items 0-2/3", range.getValue());
 			String entityString = EntityUtils.toString(entity);
-			JsendResultWrapper o = DEFAULT_SERIALIZER.getSerializer(Format.WRAPPED_XML)
-			    .deserialize(entityString, JsendResultWrapper.class);
-			verifyList(((ArrayList<LittleO>) o.getData()).toArray(new LittleO[0]));
+			LittleO[] os = DEFAULT_SERIALIZER.getSerializer(Format.JSON).deserialize(entityString, LittleO[].class);
+			verifyList(os);
 		}
 		finally
 		{
@@ -849,6 +700,165 @@ public class RestExpressServerTest
 			String entityString = EntityUtils.toString(entity);
 			ArrayList<LittleO> os = DEFAULT_SERIALIZER.getSerializer(Format.XML).deserialize(entityString, ArrayList.class);
 			verifyList(os.toArray(new LittleO[0]));
+		}
+		finally
+		{
+			request.releaseConnection();
+		}
+	}
+
+	@Test
+	public void shouldSerializeUnmappedPreprocessorException() throws Exception
+	{
+		ERROR_PREPROCESSOR.shouldThrow(true);
+		HttpGet request = new HttpGet(LITTLE_OS_URL);
+
+		try
+		{
+			HttpResponse response = (HttpResponse) CLIENT.execute(request);
+			assertEquals(HttpResponseStatus.INTERNAL_SERVER_ERROR.code(), response.getStatusLine().getStatusCode());
+			HttpEntity entity = response.getEntity();
+			assertTrue(entity.getContentLength() > 0l);
+			assertEquals(ContentType.JSON, entity.getContentType().getValue());
+			assertNull(response.getFirstHeader(HttpHeaders.Names.CONTENT_RANGE));
+			String entityString = EntityUtils.toString(entity);
+			assertNotNull(entityString);
+			assertTrue(entityString.contains("\"errorId\":\""));
+			assertTrue(entityString.contains("\"httpStatus\":500"));
+			assertTrue(entityString.contains("\"message\":\"ErrorPreprocessor\""));
+			assertTrue(entityString.contains("\"errorType\":\"RuntimeException\""));
+		}
+		finally
+		{
+			request.releaseConnection();
+		}
+	}
+
+//	@Test
+//	public void shouldSerializeMappedPreprocessorException() throws Exception
+//	{
+//		AbstractSerializationProvider serializer = new NullSerializationProvider();
+//		JacksonJsonProcessor jsonProc = new JacksonJsonProcessor();
+//		serializer.add(jsonProc, new ErrorResponseWrapper(), true);
+//		RestExpress.setSerializationProvider(serializer);
+//		RestExpress server = createServer();
+//		server.addPreprocessor(new ErrorPreprocessor());
+//		server.mapException(RuntimeException.class, BadRequestException.class);
+//		server.bind(DEFAULT_PORT + 2);
+//
+//		HttpGet request = new HttpGet(onPort(DEFAULT_PORT + 2, LITTLE_OS_URL));
+//
+//		try
+//		{
+//			HttpResponse response = (HttpResponse) CLIENT.execute(request);
+//			assertEquals(HttpResponseStatus.BAD_REQUEST.code(), response.getStatusLine().getStatusCode());
+//			HttpEntity entity = response.getEntity();
+//			assertTrue(entity.getContentLength() > 0l);
+//			assertEquals(ContentType.JSON, entity.getContentType().getValue());
+//			assertNull(response.getFirstHeader(HttpHeaders.Names.CONTENT_RANGE));
+//			String entityString = EntityUtils.toString(entity);
+//			assertNotNull(entityString);
+//			assertTrue(entityString.contains("\"errorId\":\""));
+//			assertTrue(entityString.contains("\"httpStatus\":400"));
+//			assertTrue(entityString.contains("\"message\":\"ErrorPreprocessor\""));
+//			assertTrue(entityString.contains("\"errorType\":\"RuntimeException\""));
+//		}
+//		finally
+//		{
+//			request.releaseConnection();
+//			server.shutdown(true);
+//		}
+//	}
+
+	@Test
+	public void shouldSerializeUnmappedException() throws Exception
+	{
+		HttpGet request = new HttpGet(URL_EXCEPTION_LITTLE_O);
+
+		try
+		{
+			HttpResponse response = (HttpResponse) CLIENT.execute(request);
+			assertEquals(HttpResponseStatus.INTERNAL_SERVER_ERROR.code(), response.getStatusLine().getStatusCode());
+			HttpEntity entity = response.getEntity();
+			assertTrue(entity.getContentLength() > 0l);
+			assertEquals(ContentType.JSON, entity.getContentType().getValue());
+			assertNull(response.getFirstHeader(HttpHeaders.Names.CONTENT_RANGE));
+			String entityString = EntityUtils.toString(entity);
+			assertNotNull(entityString);
+			assertTrue(entityString.contains("\"errorId\":\""));
+			assertTrue(entityString.contains("\"httpStatus\":500"));
+			assertTrue(entityString.contains("\"message\":\"ObjectTestController\""));
+			assertTrue(entityString.contains("\"errorType\":\"NullPointerException\""));
+		}
+		finally
+		{
+			request.releaseConnection();
+		}
+	}
+
+//	@Test
+//	public void shouldSerializeMappedException() throws Exception
+//	{
+//		SERVER.mapException(NullPointerException.class, BadRequestException.class);
+//
+//		HttpGet request = new HttpGet(URL_EXCEPTION_LITTLE_O);
+//
+//		try
+//		{
+//			HttpResponse response = (HttpResponse) CLIENT.execute(request);
+//			assertEquals(HttpResponseStatus.BAD_REQUEST.code(), response.getStatusLine().getStatusCode());
+//			HttpEntity entity = response.getEntity();
+//			assertTrue(entity.getContentLength() > 0l);
+//			assertEquals(ContentType.JSON, entity.getContentType().getValue());
+//			assertNull(response.getFirstHeader(HttpHeaders.Names.CONTENT_RANGE));
+//			String entityString = EntityUtils.toString(entity);
+//			assertNotNull(entityString);
+//			assertTrue(entityString.contains("\"errorId\":\""));
+//			assertTrue(entityString.contains("\"httpStatus\":400"));
+//			assertTrue(entityString.contains("\"message\":\"ObjectTestController\""));
+//			assertTrue(entityString.contains("\"errorType\":\"NullPointerException\""));
+//		}
+//		finally
+//		{
+//			request.releaseConnection();
+//		}
+//	}
+
+	@Test
+	public void shouldCallFinallyProcessorOnException() throws Exception
+	{
+		HttpGet request = new HttpGet(URL_EXCEPTION_LITTLE_O);
+
+		try
+		{
+			HttpResponse response = (HttpResponse) CLIENT.execute(request);
+			assertEquals(HttpResponseStatus.INTERNAL_SERVER_ERROR.code(), response.getStatusLine().getStatusCode());
+			assertEquals(1, POSTPROCESSOR.callCount());
+		}
+		finally
+		{
+			request.releaseConnection();
+		}
+	}
+
+	@Test
+	public void shouldCallFinallyProcessorOnPreprocessorException()
+	throws Exception
+	{
+		ERROR_PREPROCESSOR.shouldThrow(true);
+		HttpGet request = new HttpGet(LITTLE_OS_URL);
+
+		try
+		{
+			HttpResponse response = (HttpResponse) CLIENT.execute(request);
+			assertEquals(HttpResponseStatus.INTERNAL_SERVER_ERROR.code(), response.getStatusLine().getStatusCode());
+			assertEquals(1, POSTPROCESSOR.callCount());
+			String entityString = EntityUtils.toString(response.getEntity());
+			assertNotNull(entityString);
+			assertTrue(entityString.contains("\"errorId\":\""));
+			assertTrue(entityString.contains("\"httpStatus\":500"));
+			assertTrue(entityString.contains("\"message\":\"ErrorPreprocessor\""));
+			assertTrue(entityString.contains("\"errorType\":\"RuntimeException\""));
 		}
 		finally
 		{
@@ -981,13 +991,6 @@ public class RestExpressServerTest
 		{
 			request.releaseConnection();
 		}
-	}
-
-	private String extractJson(String string)
-	{
-		final String search = "\"data\":";
-		int start = string.indexOf(search) + search.length();
-		return string.substring(start, string.length() - 1);
 	}
 
 	private void verifyObject(LittleO o)

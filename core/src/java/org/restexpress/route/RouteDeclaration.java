@@ -48,7 +48,7 @@ public class RouteDeclaration
 	/**
 	 * Map a parameterized URL pattern to a controller.
 	 * 
-	 * @param urlPattern a string specifying a URL pattern to match.
+	 * @param uri a string specifying a URL pattern to match.
 	 * @param controller a pojo which contains implementations of the service methods (e.g. create(), read(), update(), delete()).
 	 */
 	public ParameterizedRouteBuilder uri(String uri, Object controller, RouteDefaults defaults)

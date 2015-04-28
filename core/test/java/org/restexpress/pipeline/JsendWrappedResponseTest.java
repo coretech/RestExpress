@@ -15,26 +15,15 @@
 */
 package org.restexpress.pipeline;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
-import java.net.InetSocketAddress;
-import java.nio.charset.Charset;
-
-import org.jboss.netty.buffer.ChannelBuffers;
-import org.jboss.netty.channel.Channel;
-import org.jboss.netty.channel.ChannelFactory;
-import org.jboss.netty.channel.ChannelPipeline;
-import org.jboss.netty.channel.UpstreamMessageEvent;
-import org.jboss.netty.channel.local.DefaultLocalServerChannelFactory;
-import org.jboss.netty.handler.codec.http.DefaultHttpRequest;
-import org.jboss.netty.handler.codec.http.HttpMethod;
-import org.jboss.netty.handler.codec.http.HttpRequest;
-import org.jboss.netty.handler.codec.http.HttpVersion;
+import io.netty.buffer.Unpooled;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelPipeline;
+import io.netty.channel.embedded.EmbeddedChannel;
+import io.netty.handler.codec.http.DefaultFullHttpRequest;
+import io.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.HttpVersion;
 import org.junit.Before;
 import org.junit.Test;
-import org.restexpress.pipeline.DefaultRequestHandler;
-import org.restexpress.pipeline.PipelineBuilder;
 import org.restexpress.response.DefaultHttpResponseWriter;
 import org.restexpress.response.JsendResponseWrapper;
 import org.restexpress.response.StringBufferHttpResponseWriter;
@@ -46,11 +35,16 @@ import org.restexpress.serialization.json.JacksonJsonProcessor;
 import org.restexpress.serialization.xml.XstreamXmlProcessor;
 import org.restexpress.settings.RouteDefaults;
 
+import java.nio.charset.Charset;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 
 /**
- * @author toddf
- * @since Dec 15, 2010
- */
+* @author toddf
+* @since Dec 15, 2010
+*/
 public class JsendWrappedResponseTest
 {
 	private DefaultRequestHandler messageHandler;
@@ -58,7 +52,7 @@ public class JsendWrappedResponseTest
 	private Channel channel;
     private ChannelPipeline pl;
     private StringBuffer httpResponse;
-	
+
 	@Before
 	public void initialize()
 	throws Exception
@@ -73,17 +67,16 @@ public class JsendWrappedResponseTest
 		messageHandler.addMessageObserver(observer);
 		httpResponse = new StringBuffer();
 		messageHandler.setResponseWriter(new StringBufferHttpResponseWriter(httpResponse));
-		PipelineBuilder pf = new PipelineBuilder()
+		PipelineInitializer pf = new PipelineInitializer()
 			.addRequestHandler(messageHandler);
-	    pl = pf.getPipeline();
-	    ChannelFactory channelFactory = new DefaultLocalServerChannelFactory();
-	    channel = channelFactory.newChannel(pl);
+        channel = new EmbeddedChannel(messageHandler);
+        pl = channel.pipeline();
 	}
 
 	@Test
 	public void shouldWrapGetInJsendJson()
 	{
-		sendEvent(HttpMethod.GET, "/normal_get.json", null);
+		sendEvent(HttpMethod.GET, "/normal_get.json", "");
 		assertEquals(1, observer.getReceivedCount());
 		assertEquals(1, observer.getCompleteCount());
 		assertEquals(1, observer.getSuccessCount());
@@ -95,7 +88,7 @@ public class JsendWrappedResponseTest
 	@Test
 	public void shouldWrapGetInJsendJsonUsingQueryString()
 	{
-		sendEvent(HttpMethod.GET, "/normal_get?format=json", null);
+		sendEvent(HttpMethod.GET, "/normal_get?format=json", "");
 		assertEquals(1, observer.getReceivedCount());
 		assertEquals(1, observer.getCompleteCount());
 		assertEquals(1, observer.getSuccessCount());
@@ -107,7 +100,7 @@ public class JsendWrappedResponseTest
 	@Test
 	public void shouldWrapGetInJsendXml()
 	{
-		sendEvent(HttpMethod.GET, "/normal_get.xml", null);
+		sendEvent(HttpMethod.GET, "/normal_get.xml", "");
 		assertEquals(1, observer.getReceivedCount());
 		assertEquals(1, observer.getCompleteCount());
 		assertEquals(1, observer.getSuccessCount());
@@ -123,7 +116,7 @@ public class JsendWrappedResponseTest
 	@Test
 	public void shouldWrapGetInJsendXmlUsingQueryString()
 	{
-		sendEvent(HttpMethod.GET, "/normal_get?format=xml", null);
+		sendEvent(HttpMethod.GET, "/normal_get?format=xml", "");
 		assertEquals(1, observer.getReceivedCount());
 		assertEquals(1, observer.getCompleteCount());
 		assertEquals(1, observer.getSuccessCount());
@@ -139,7 +132,7 @@ public class JsendWrappedResponseTest
 	@Test
 	public void shouldWrapPutInJsendJson()
 	{
-		sendEvent(HttpMethod.PUT, "/normal_put.json", null);
+		sendEvent(HttpMethod.PUT, "/normal_put.json", "");
 		assertEquals(1, observer.getReceivedCount());
 		assertEquals(1, observer.getCompleteCount());
 		assertEquals(1, observer.getSuccessCount());
@@ -151,7 +144,7 @@ public class JsendWrappedResponseTest
 	@Test
 	public void shouldWrapPutInJsendJsonUsingQueryString()
 	{
-		sendEvent(HttpMethod.PUT, "/normal_put?format=json", null);
+		sendEvent(HttpMethod.PUT, "/normal_put?format=json", "");
 		assertEquals(1, observer.getReceivedCount());
 		assertEquals(1, observer.getCompleteCount());
 		assertEquals(1, observer.getSuccessCount());
@@ -163,7 +156,7 @@ public class JsendWrappedResponseTest
 	@Test
 	public void shouldWrapPutInJsendXml()
 	{
-		sendEvent(HttpMethod.PUT, "/normal_put.xml", null);
+		sendEvent(HttpMethod.PUT, "/normal_put.xml", "");
 		assertEquals(1, observer.getReceivedCount());
 		assertEquals(1, observer.getCompleteCount());
 		assertEquals(1, observer.getSuccessCount());
@@ -179,7 +172,7 @@ public class JsendWrappedResponseTest
 	@Test
 	public void shouldWrapPutInJsendXmlUsingQueryString()
 	{
-		sendEvent(HttpMethod.PUT, "/normal_put?format=xml", null);
+		sendEvent(HttpMethod.PUT, "/normal_put?format=xml", "");
 		assertEquals(1, observer.getReceivedCount());
 		assertEquals(1, observer.getCompleteCount());
 		assertEquals(1, observer.getSuccessCount());
@@ -195,7 +188,7 @@ public class JsendWrappedResponseTest
 	@Test
 	public void shouldWrapPostInJsendJson()
 	{
-		sendEvent(HttpMethod.POST, "/normal_post.json", null);
+		sendEvent(HttpMethod.POST, "/normal_post.json", "");
 		assertEquals(1, observer.getReceivedCount());
 		assertEquals(1, observer.getCompleteCount());
 		assertEquals(1, observer.getSuccessCount());
@@ -207,7 +200,7 @@ public class JsendWrappedResponseTest
 	@Test
 	public void shouldWrapPostInJsendJsonUsingQueryString()
 	{
-		sendEvent(HttpMethod.POST, "/normal_post?format=json", null);
+		sendEvent(HttpMethod.POST, "/normal_post?format=json", "");
 		assertEquals(1, observer.getReceivedCount());
 		assertEquals(1, observer.getCompleteCount());
 		assertEquals(1, observer.getSuccessCount());
@@ -219,7 +212,7 @@ public class JsendWrappedResponseTest
 	@Test
 	public void shouldWrapPostInJsendXml()
 	{
-		sendEvent(HttpMethod.POST, "/normal_post.xml", null);
+		sendEvent(HttpMethod.POST, "/normal_post.xml", "");
 		assertEquals(1, observer.getReceivedCount());
 		assertEquals(1, observer.getCompleteCount());
 		assertEquals(1, observer.getSuccessCount());
@@ -235,7 +228,7 @@ public class JsendWrappedResponseTest
 	@Test
 	public void shouldWrapPostInJsendXmlUsingQueryString()
 	{
-		sendEvent(HttpMethod.POST, "/normal_post?format=xml", null);
+		sendEvent(HttpMethod.POST, "/normal_post?format=xml", "");
 		assertEquals(1, observer.getReceivedCount());
 		assertEquals(1, observer.getCompleteCount());
 		assertEquals(1, observer.getSuccessCount());
@@ -251,7 +244,7 @@ public class JsendWrappedResponseTest
 	@Test
 	public void shouldWrapDeleteInJsendJson()
 	{
-		sendEvent(HttpMethod.DELETE, "/normal_delete.json", null);
+		sendEvent(HttpMethod.DELETE, "/normal_delete.json", "");
 		assertEquals(1, observer.getReceivedCount());
 		assertEquals(1, observer.getCompleteCount());
 		assertEquals(1, observer.getSuccessCount());
@@ -263,7 +256,7 @@ public class JsendWrappedResponseTest
 	@Test
 	public void shouldWrapDeleteInJsendJsonUsingQueryString()
 	{
-		sendEvent(HttpMethod.DELETE, "/normal_delete?format=json", null);
+		sendEvent(HttpMethod.DELETE, "/normal_delete?format=json", "");
 		assertEquals(1, observer.getReceivedCount());
 		assertEquals(1, observer.getCompleteCount());
 		assertEquals(1, observer.getSuccessCount());
@@ -275,7 +268,7 @@ public class JsendWrappedResponseTest
 	@Test
 	public void shouldWrapDeleteInJsendXml()
 	{
-		sendEvent(HttpMethod.DELETE, "/normal_delete.xml", null);
+		sendEvent(HttpMethod.DELETE, "/normal_delete.xml", "");
 		assertEquals(1, observer.getReceivedCount());
 		assertEquals(1, observer.getCompleteCount());
 		assertEquals(1, observer.getSuccessCount());
@@ -291,7 +284,7 @@ public class JsendWrappedResponseTest
 	@Test
 	public void shouldWrapDeleteInJsendXmlUsingQueryString()
 	{
-		sendEvent(HttpMethod.DELETE, "/normal_delete?format=xml", null);
+		sendEvent(HttpMethod.DELETE, "/normal_delete?format=xml", "");
 		assertEquals(1, observer.getReceivedCount());
 		assertEquals(1, observer.getCompleteCount());
 		assertEquals(1, observer.getSuccessCount());
@@ -307,7 +300,7 @@ public class JsendWrappedResponseTest
 	@Test
 	public void shouldWrapNotFoundInJsendJson()
 	{
-		sendEvent(HttpMethod.GET, "/not_found.json", null);
+		sendEvent(HttpMethod.GET, "/not_found.json", "");
 		assertEquals(1, observer.getReceivedCount());
 		assertEquals(1, observer.getCompleteCount());
 		assertEquals(0, observer.getSuccessCount());
@@ -319,7 +312,7 @@ public class JsendWrappedResponseTest
 	@Test
 	public void shouldWrapNotFoundInJsendJsonUsingQueryString()
 	{
-		sendEvent(HttpMethod.GET, "/not_found?format=json", null);
+		sendEvent(HttpMethod.GET, "/not_found?format=json", "");
 		assertEquals(1, observer.getReceivedCount());
 		assertEquals(1, observer.getCompleteCount());
 		assertEquals(0, observer.getSuccessCount());
@@ -331,7 +324,7 @@ public class JsendWrappedResponseTest
 	@Test
 	public void shouldWrapNotFoundInJsendXml()
 	{
-		sendEvent(HttpMethod.GET, "/not_found.xml", null);
+		sendEvent(HttpMethod.GET, "/not_found.xml", "");
 		assertEquals(1, observer.getReceivedCount());
 		assertEquals(1, observer.getCompleteCount());
 		assertEquals(0, observer.getSuccessCount());
@@ -348,7 +341,7 @@ public class JsendWrappedResponseTest
 	@Test
 	public void shouldWrapNotFoundInJsendXmlUsingQueryString()
 	{
-		sendEvent(HttpMethod.GET, "/not_found?format=xml", null);
+		sendEvent(HttpMethod.GET, "/not_found?format=xml", "");
 		assertEquals(1, observer.getReceivedCount());
 		assertEquals(1, observer.getCompleteCount());
 		assertEquals(0, observer.getSuccessCount());
@@ -364,7 +357,7 @@ public class JsendWrappedResponseTest
 	@Test
 	public void shouldWrapNullPointerInJsendJson()
 	{
-		sendEvent(HttpMethod.GET, "/null_pointer.json", null);
+		sendEvent(HttpMethod.GET, "/null_pointer.json", "");
 		assertEquals(1, observer.getReceivedCount());
 		assertEquals(1, observer.getCompleteCount());
 		assertEquals(0, observer.getSuccessCount());
@@ -376,7 +369,7 @@ public class JsendWrappedResponseTest
 	@Test
 	public void shouldWrapNullPointerInJsendJsonUsingQueryString()
 	{
-		sendEvent(HttpMethod.GET, "/null_pointer?format=json", null);
+		sendEvent(HttpMethod.GET, "/null_pointer?format=json", "");
 		assertEquals(1, observer.getReceivedCount());
 		assertEquals(1, observer.getCompleteCount());
 		assertEquals(0, observer.getSuccessCount());
@@ -388,7 +381,7 @@ public class JsendWrappedResponseTest
 	@Test
 	public void shouldWrapNullPointerInJsendXml()
 	{
-		sendEvent(HttpMethod.GET, "/null_pointer.xml", null);
+		sendEvent(HttpMethod.GET, "/null_pointer.xml", "");
 		assertEquals(1, observer.getReceivedCount());
 		assertEquals(1, observer.getCompleteCount());
 		assertEquals(0, observer.getSuccessCount());
@@ -405,7 +398,7 @@ public class JsendWrappedResponseTest
 	@Test
 	public void shouldWrapNullPointerInJsendXmlUsingQueryString()
 	{
-		sendEvent(HttpMethod.GET, "/null_pointer?format=xml", null);
+		sendEvent(HttpMethod.GET, "/null_pointer?format=xml", "");
 		assertEquals(1, observer.getReceivedCount());
 		assertEquals(1, observer.getCompleteCount());
 		assertEquals(0, observer.getSuccessCount());
@@ -422,7 +415,7 @@ public class JsendWrappedResponseTest
 	@Test
 	public void shouldWrapInvalidUrlWithJsonFormat()
 	{
-		sendEvent(HttpMethod.GET, "/xyzt.json", null);
+		sendEvent(HttpMethod.GET, "/xyzt.json", "");
 		assertEquals(1, observer.getReceivedCount());
 		assertEquals(1, observer.getCompleteCount());
 		assertEquals(0, observer.getSuccessCount());
@@ -434,7 +427,7 @@ public class JsendWrappedResponseTest
 	@Test
 	public void shouldWrapInvalidUrlWithJsonFormatUsingQueryString()
 	{
-		sendEvent(HttpMethod.GET, "/xyzt?format=json", null);
+		sendEvent(HttpMethod.GET, "/xyzt?format=json", "");
 		assertEquals(1, observer.getReceivedCount());
 		assertEquals(1, observer.getCompleteCount());
 		assertEquals(0, observer.getSuccessCount());
@@ -446,7 +439,7 @@ public class JsendWrappedResponseTest
 	@Test
 	public void shouldWrapInvalidUrlWithXmlFormat()
 	{
-		sendEvent(HttpMethod.GET, "/xyzt.xml", null);
+		sendEvent(HttpMethod.GET, "/xyzt.xml", "");
 		assertEquals(1, observer.getReceivedCount());
 		assertEquals(1, observer.getCompleteCount());
 		assertEquals(0, observer.getSuccessCount());
@@ -462,7 +455,7 @@ public class JsendWrappedResponseTest
 	@Test
 	public void shouldWrapInvalidUrlWithXmlFormatUsingQueryString()
 	{
-		sendEvent(HttpMethod.GET, "/xyzt?format=xml", null);
+		sendEvent(HttpMethod.GET, "/xyzt?format=xml", "");
 		assertEquals(1, observer.getReceivedCount());
 		assertEquals(1, observer.getCompleteCount());
 		assertEquals(0, observer.getSuccessCount());
@@ -477,19 +470,9 @@ public class JsendWrappedResponseTest
 
 	private void sendEvent(HttpMethod method, String path, String body)
     {
-		HttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, method, path);
-		
-		if (body != null)
-		{
-			request.setContent(ChannelBuffers.copiedBuffer(body, Charset.defaultCharset()));
-		}
-
-	    pl.sendUpstream(new UpstreamMessageEvent(
-	    	channel,
-	    	request,
-	    	new InetSocketAddress(1)));
+        pl.fireChannelRead(new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, method, path, Unpooled.copiedBuffer(body, Charset.defaultCharset())));
     }
-	
+
 	public class DummyRoutes
 	extends RouteDeclaration
 	{

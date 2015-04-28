@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.jboss.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.HttpMethod;
 import org.restexpress.route.Route;
 import org.restexpress.route.RouteBuilder;
 import org.restexpress.settings.RouteDefaults;
@@ -35,7 +35,7 @@ extends RouteBuilder
 	/**
 	 * @param uri
 	 * @param controller
-	 * @param routeType
+	 * @param defaults
 	 */
 	public RegexRouteBuilder(String uri, Object controller,
 	    RouteDefaults defaults)

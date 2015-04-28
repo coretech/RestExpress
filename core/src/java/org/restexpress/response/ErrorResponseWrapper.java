@@ -44,7 +44,7 @@ implements ResponseWrapper
 			return true;
 		}
 
-		int code = response.getResponseStatus().getCode();
+		int code = response.getResponseStatus().code();
 
 		if (code >= 400 && code < 600)
 		{

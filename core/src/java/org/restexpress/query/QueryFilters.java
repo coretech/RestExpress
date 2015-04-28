@@ -103,12 +103,24 @@ public abstract class QueryFilters
 				String field = m.group(1);
 				enforceSupportedProperties(allowedProperties, field);
 				FilterOperator operator = findOperator(m.group(2));
-				filters.add(new FilterComponent(field, operator, m.group(3)));
+				filters.add(new FilterComponent(field, operator, parse(operator, m.group(3))));
 			}
 		}
 
 		return new QueryFilter(filters);
 	}
+
+	private static Object parse(FilterOperator operator, String group)
+    {
+		if (group == null || group.trim().isEmpty()) return null;
+
+		if (FilterOperator.IN.equals(operator))
+		{
+			return group.split(",");
+		}
+
+		return group;
+    }
 
 	private static FilterOperator findOperator(String operation)
     {
@@ -123,6 +135,7 @@ public abstract class QueryFilters
 		if (">".equals(operator)) return FilterOperator.GREATER_THAN;
 		if (">=".equals(operator)) return FilterOperator.GREATER_THAN_OR_EQUAL_TO;
 		if ("*".equals(operator)) return FilterOperator.STARTS_WITH;
+		if ("in".equalsIgnoreCase(operator)) return FilterOperator.IN;
 
 		return FilterOperator.EQUALS;
     }

@@ -17,7 +17,7 @@ package org.restexpress.preprocessor;
 
 import javax.xml.bind.DatatypeConverter;
 
-import org.jboss.netty.handler.codec.http.HttpHeaders;
+import io.netty.handler.codec.http.HttpHeaders;
 import org.restexpress.Flags;
 import org.restexpress.Request;
 import org.restexpress.exception.UnauthorizedException;

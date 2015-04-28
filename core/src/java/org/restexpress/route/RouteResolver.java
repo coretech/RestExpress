@@ -17,7 +17,7 @@ package org.restexpress.route;
 
 import java.util.List;
 
-import org.jboss.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.HttpMethod;
 import org.restexpress.Request;
 import org.restexpress.exception.MethodNotAllowedException;
 import org.restexpress.exception.NotFoundException;

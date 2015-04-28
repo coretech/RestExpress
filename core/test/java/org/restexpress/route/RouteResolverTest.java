@@ -21,10 +21,12 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 
-import org.jboss.netty.handler.codec.http.DefaultHttpRequest;
-import org.jboss.netty.handler.codec.http.HttpMethod;
-import org.jboss.netty.handler.codec.http.HttpRequest;
-import org.jboss.netty.handler.codec.http.HttpVersion;
+import io.netty.handler.codec.http.DefaultFullHttpRequest;
+import io.netty.handler.codec.http.DefaultHttpRequest;
+import io.netty.handler.codec.http.FullHttpRequest;
+import io.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.HttpRequest;
+import io.netty.handler.codec.http.HttpVersion;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.restexpress.Request;
@@ -59,7 +61,7 @@ public class RouteResolverTest
 	@Test
 	public void shouldResolveGetRoute()
 	{
-		HttpRequest httpRequest = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/foo/bar/bar432.json?value=ignored");
+		FullHttpRequest httpRequest = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/foo/bar/bar432.json?value=ignored");
 		httpRequest.headers().add("Host", "testing-host");
 		Request request = new Request(httpRequest, null);
 		Action action = resolver.resolve(request);
@@ -71,7 +73,7 @@ public class RouteResolverTest
 	@Test
 	public void shouldResolveAliasBarGetRoute()
 	{
-		HttpRequest httpRequest = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/bar/bar432.json?value=ignored");
+		FullHttpRequest httpRequest = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/bar/bar432.json?value=ignored");
 		httpRequest.headers().add("Host", "testing-host");
 		Request request = new Request(httpRequest, null);
 		Action action = resolver.resolve(request);
@@ -83,7 +85,7 @@ public class RouteResolverTest
 	@Test
 	public void shouldResolvePostRoute()
 	{
-		HttpRequest httpRequest = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.POST, "/foo.json?value=ignored");
+		FullHttpRequest httpRequest = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.POST, "/foo.json?value=ignored");
 		httpRequest.headers().add("Host", "testing-host");
 		Request request = new Request(httpRequest, null);
 		Action action = resolver.resolve(request);
@@ -95,7 +97,7 @@ public class RouteResolverTest
 	@Test
 	public void shouldResolveAliasFooPostRoute()
 	{
-		HttpRequest httpRequest = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.POST, "/yada/yada.json?value=ignored");
+		FullHttpRequest httpRequest = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.POST, "/yada/yada.json?value=ignored");
 		httpRequest.headers().add("Host", "testing-host");
 		Request request = new Request(httpRequest, null);
 		Action action = resolver.resolve(request);
@@ -107,7 +109,7 @@ public class RouteResolverTest
 	@Test
 	public void shouldResolveCrudRouteForGet()
 	{
-		HttpRequest httpRequest = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/foo/foo23.json?value=ignored");
+		FullHttpRequest httpRequest = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/foo/foo23.json?value=ignored");
 		httpRequest.headers().add("Host", "testing-host");
 		Request request = new Request(httpRequest, null);
 		Action action = resolver.resolve(request);
@@ -119,7 +121,7 @@ public class RouteResolverTest
 	@Test
 	public void shouldResolveAliasCrudRouteForGet()
 	{
-		HttpRequest httpRequest = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/blah/foo/foo23.json?value=ignored");
+		FullHttpRequest httpRequest = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/blah/foo/foo23.json?value=ignored");
 		httpRequest.headers().add("Host", "testing-host");
 		Request request = new Request(httpRequest, null);
 		Action action = resolver.resolve(request);
@@ -131,7 +133,7 @@ public class RouteResolverTest
 	@Test
 	public void shouldResolveCrudRouteForPut()
 	{
-		HttpRequest httpRequest = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.PUT, "/foo/foo23.json?value=ignored");
+		FullHttpRequest httpRequest = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.PUT, "/foo/foo23.json?value=ignored");
 		httpRequest.headers().add("Host", "testing-host");
 		Request request = new Request(httpRequest, null);
 		Action action = resolver.resolve(request);
@@ -143,7 +145,7 @@ public class RouteResolverTest
 	@Test
 	public void shouldResolveAliasCrudRouteForPut()
 	{
-		HttpRequest httpRequest = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.PUT, "/blah/foo/foo23.json?value=ignored");
+		FullHttpRequest httpRequest = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.PUT, "/blah/foo/foo23.json?value=ignored");
 		httpRequest.headers().add("Host", "testing-host");
 		Request request = new Request(httpRequest, null);
 		Action action = resolver.resolve(request);
@@ -155,7 +157,7 @@ public class RouteResolverTest
 	@Test
 	public void shouldResolveCrudRouteForPost()
 	{
-		HttpRequest httpRequest = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.POST, "/foo/foo23.json?value=ignored");
+		FullHttpRequest httpRequest = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.POST, "/foo/foo23.json?value=ignored");
 		httpRequest.headers().add("Host", "testing-host");
 		Request request = new Request(httpRequest, null);
 		Action action = resolver.resolve(request);
@@ -167,7 +169,7 @@ public class RouteResolverTest
 	@Test
 	public void shouldResolveAliasCrudRouteForPost()
 	{
-		HttpRequest httpRequest = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.POST, "/blah/foo/foo23.json?value=ignored");
+		FullHttpRequest httpRequest = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.POST, "/blah/foo/foo23.json?value=ignored");
 		httpRequest.headers().add("Host", "testing-host");
 		Request request = new Request(httpRequest, null);
 		Action action = resolver.resolve(request);
@@ -179,7 +181,7 @@ public class RouteResolverTest
 	@Test
 	public void shouldResolveCrudRouteForDelete()
 	{
-		HttpRequest httpRequest = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.DELETE, "/foo/foo23.json?value=ignored");
+		FullHttpRequest httpRequest = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.DELETE, "/foo/foo23.json?value=ignored");
 		httpRequest.headers().add("Host", "testing-host");
 		Request request = new Request(httpRequest, null);
 		Action action = resolver.resolve(request);
@@ -191,7 +193,7 @@ public class RouteResolverTest
 	@Test
 	public void shouldResolveAliasCrudRouteForDelete()
 	{
-		HttpRequest httpRequest = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.DELETE, "/blah/foo/foo23.json?value=ignored");
+		FullHttpRequest httpRequest = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.DELETE, "/blah/foo/foo23.json?value=ignored");
 		httpRequest.headers().add("Host", "testing-host");
 		Request request = new Request(httpRequest, null);
 		Action action = resolver.resolve(request);
@@ -203,7 +205,7 @@ public class RouteResolverTest
 	@Test(expected=MethodNotAllowedException.class)
 	public void shouldThrowMethodNotAllowed()
 	{
-		HttpRequest httpRequest = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.OPTIONS, "/foo/foo23.json?value=ignored");
+		FullHttpRequest httpRequest = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.OPTIONS, "/foo/foo23.json?value=ignored");
 		httpRequest.headers().add("Host", "testing-host");
 		Request request = new Request(httpRequest, null);
 		resolver.resolve(request);
@@ -212,7 +214,7 @@ public class RouteResolverTest
 	@Test
 	public void shouldSendAllowedMethodsForCrudRoute()
 	{
-		HttpRequest httpRequest = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.OPTIONS, "/foo/foo23.json?value=ignored");
+		FullHttpRequest httpRequest = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.OPTIONS, "/foo/foo23.json?value=ignored");
 		httpRequest.headers().add("Host", "testing-host");
 		Request request = new Request(httpRequest, null);
 		try
@@ -233,7 +235,7 @@ public class RouteResolverTest
 	@Test
 	public void shouldSendAllowedMethodsForPostRoute()
 	{
-		HttpRequest httpRequest = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.OPTIONS, "/foo.json?value=ignored");
+		FullHttpRequest httpRequest = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.OPTIONS, "/foo.json?value=ignored");
 		httpRequest.headers().add("Host", "testing-host");
 		Request request = new Request(httpRequest, null);
 		try
@@ -251,7 +253,7 @@ public class RouteResolverTest
 	@Test
 	public void shouldSendAllowedMethodsForGetRoute()
 	{
-		HttpRequest httpRequest = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.OPTIONS, "/foo/bar/bar23.json?value=ignored");
+		FullHttpRequest httpRequest = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.OPTIONS, "/foo/bar/bar23.json?value=ignored");
 		httpRequest.headers().add("Host", "testing-host");
 		Request request = new Request(httpRequest, null);
 		try

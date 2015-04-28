@@ -83,26 +83,26 @@ public class JsendResultWrapper
 
 			if (ServiceException.isAssignableFrom(exception))
 			{
-				return new JsendResultWrapper(response.getResponseStatus().getCode(), STATUS_ERROR, message, causeName);
+				return new JsendResultWrapper(response.getResponseStatus().code(), STATUS_ERROR, message, causeName);
 			}
 
-			return new JsendResultWrapper(response.getResponseStatus().getCode(), STATUS_FAIL, message, causeName);
+			return new JsendResultWrapper(response.getResponseStatus().code(), STATUS_FAIL, message, causeName);
 		}
 		else
 		{
-			int code = response.getResponseStatus().getCode();
+			int code = response.getResponseStatus().code();
 
 			if (code >= 400 && code < 500)
 			{
-				return new JsendResultWrapper(response.getResponseStatus().getCode(), STATUS_ERROR, null, response.getBody());
+				return new JsendResultWrapper(response.getResponseStatus().code(), STATUS_ERROR, null, response.getBody());
 			}
 
 			if (code >= 500 && code < 600)
 			{
-				return new JsendResultWrapper(response.getResponseStatus().getCode(), STATUS_FAIL, null, response.getBody());
+				return new JsendResultWrapper(response.getResponseStatus().code(), STATUS_FAIL, null, response.getBody());
 			}
 		}
 
-		return new JsendResultWrapper(response.getResponseStatus().getCode(), STATUS_SUCCESS, null, response.getBody());
+		return new JsendResultWrapper(response.getResponseStatus().code(), STATUS_SUCCESS, null, response.getBody());
 	}
 }

@@ -18,10 +18,12 @@ package org.restexpress.query;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-import org.jboss.netty.handler.codec.http.DefaultHttpRequest;
-import org.jboss.netty.handler.codec.http.HttpMethod;
-import org.jboss.netty.handler.codec.http.HttpRequest;
-import org.jboss.netty.handler.codec.http.HttpVersion;
+import io.netty.handler.codec.http.DefaultFullHttpRequest;
+import io.netty.handler.codec.http.DefaultHttpRequest;
+import io.netty.handler.codec.http.FullHttpRequest;
+import io.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.HttpRequest;
+import io.netty.handler.codec.http.HttpVersion;
 import org.junit.Test;
 import org.restexpress.Request;
 import org.restexpress.common.query.QueryRange;
@@ -37,7 +39,7 @@ public class QueryRangesTest
 	@Test
 	public void shouldParseZeroBasedRange()
 	{
-		HttpRequest httpRequest = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "http://www.example.com/somethings");
+		FullHttpRequest httpRequest = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "http://www.example.com/somethings");
 		httpRequest.headers().add("Range", "items=0-24");
 		Request request = new Request(httpRequest, null);
 		QueryRange r = QueryRanges.parseFrom(request);
@@ -49,7 +51,7 @@ public class QueryRangesTest
 	@Test
 	public void shouldHandleNullOffset()
 	{
-		HttpRequest httpRequest = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "http://www.example.com/somethings");
+		FullHttpRequest httpRequest = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "http://www.example.com/somethings");
 		httpRequest.headers().add("limit", "5");
 		Request request = new Request(httpRequest, null);
 		QueryRange r = QueryRanges.parseFrom(request);
@@ -61,7 +63,7 @@ public class QueryRangesTest
 	@Test(expected=BadRequestException.class)
 	public void shouldThrowOnNullLimitWithOffset()
 	{
-		HttpRequest httpRequest = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "http://www.example.com/somethings");
+		FullHttpRequest httpRequest = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "http://www.example.com/somethings");
 		httpRequest.headers().add("offset", "25");
 		Request request = new Request(httpRequest, null);
 		QueryRanges.parseFrom(request);
@@ -71,7 +73,7 @@ public class QueryRangesTest
 	@Test
 	public void shouldHandleNullLimitWithDefault()
 	{
-		HttpRequest httpRequest = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "http://www.example.com/somethings");
+		FullHttpRequest httpRequest = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "http://www.example.com/somethings");
 		httpRequest.headers().add("offset", "25");
 		Request request = new Request(httpRequest, null);
 		QueryRange r = QueryRanges.parseFrom(request, 5);
@@ -83,7 +85,7 @@ public class QueryRangesTest
 	@Test(expected=BadRequestException.class)
 	public void shouldThrowExceptionOnNonNumericRange()
 	{
-		HttpRequest httpRequest = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "http://www.example.com/somethings");
+		FullHttpRequest httpRequest = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "http://www.example.com/somethings");
 		httpRequest.headers().add("Range", "items=A-24");
 		Request request = new Request(httpRequest, null);
 		QueryRanges.parseFrom(request);
@@ -93,7 +95,7 @@ public class QueryRangesTest
 	@Test(expected=BadRequestException.class)
 	public void shouldThrowExceptionOnReversedRange()
 	{
-		HttpRequest httpRequest = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "http://www.example.com/somethings");
+		FullHttpRequest httpRequest = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "http://www.example.com/somethings");
 		httpRequest.headers().add("Range", "items=24-23");
 		Request request = new Request(httpRequest, null);
 		QueryRanges.parseFrom(request);
@@ -103,7 +105,7 @@ public class QueryRangesTest
 	@Test(expected=BadRequestException.class)
 	public void shouldThrowExceptionOnReversedRangeAroundZero()
 	{
-		HttpRequest httpRequest = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "http://www.example.com/somethings");
+		FullHttpRequest httpRequest = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "http://www.example.com/somethings");
 		httpRequest.headers().add("Range", "items=1-0");
 		Request request = new Request(httpRequest, null);
 		QueryRanges.parseFrom(request);
@@ -113,7 +115,7 @@ public class QueryRangesTest
 	@Test
 	public void shouldParseNextPageRange()
 	{
-		HttpRequest httpRequest = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "http://www.example.com/somethings");
+		FullHttpRequest httpRequest = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "http://www.example.com/somethings");
 		httpRequest.headers().add("Range", "items=200-299");
 		Request request = new Request(httpRequest, null);
 		QueryRange r = QueryRanges.parseFrom(request);
@@ -125,7 +127,7 @@ public class QueryRangesTest
 	@Test
 	public void shouldFavorQueryStringParameters()
 	{
-		HttpRequest httpRequest = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "http://www.example.com/somethings");
+		FullHttpRequest httpRequest = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "http://www.example.com/somethings");
 		httpRequest.headers().add("Range", "items=0-24");
 		// RestExpress parses the query-string into headers.
 		httpRequest.headers().add("limit", "100");

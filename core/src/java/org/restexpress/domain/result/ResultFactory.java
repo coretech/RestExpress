@@ -36,7 +36,7 @@ public class ResultFactory
 
 	public Result fromResponse(Response response)
 	{
-		Integer httpResponseCode = response.getResponseStatus().getCode();
+		Integer httpResponseCode = response.getResponseStatus().code();
 
 		if (!response.hasException())
 		{

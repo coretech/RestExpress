@@ -22,7 +22,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.jboss.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.HttpMethod;
 import org.restexpress.url.UrlMatch;
 
 /**
@@ -174,7 +174,6 @@ public class RouteMapping
 	// SECTION: UTILITY
 
 	/**
-	 * @param method
 	 * @param route
 	 */
 	public void addRoute(Route route)

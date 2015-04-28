@@ -215,15 +215,23 @@ implements Cloneable
 	 * No range checking is performed. It is therefore, the caller's
 	 * responsibility to ensure that maxItems is greater-than the end value.
 	 * 
-	 * @param maxItems the maximum number of items available.
+	 * @param maxItems the maximum number of items available. -1 outputs '*' for the max items.
 	 * @return a String of the form "items <first>-<last>/<max>"
 	 */
 	public String asContentRange(long maxItems)
 	{
-		return assembleString()
-			.append("/")
-			.append(maxItems)
-			.toString();
+		StringBuffer sb = assembleString().append("/");
+		
+		if (maxItems >= 0)
+		{
+			sb.append(maxItems);
+		}
+		else
+		{
+			sb.append('*');
+		}
+
+		return sb.toString();
 	}
 
 	private StringBuffer assembleString()

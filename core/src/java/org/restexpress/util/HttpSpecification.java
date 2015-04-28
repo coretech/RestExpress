@@ -15,11 +15,11 @@
  */
 package org.restexpress.util;
 
-import static org.jboss.netty.handler.codec.http.HttpHeaders.Names.ALLOW;
-import static org.jboss.netty.handler.codec.http.HttpHeaders.Names.CONTENT_LENGTH;
-import static org.jboss.netty.handler.codec.http.HttpHeaders.Names.CONTENT_TYPE;
+import static io.netty.handler.codec.http.HttpHeaders.Names.ALLOW;
+import static io.netty.handler.codec.http.HttpHeaders.Names.CONTENT_LENGTH;
+import static io.netty.handler.codec.http.HttpHeaders.Names.CONTENT_TYPE;
 
-import org.jboss.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.handler.codec.http.HttpResponseStatus;
 import org.restexpress.Response;
 import org.restexpress.exception.HttpSpecificationException;
 
@@ -41,7 +41,7 @@ public final class HttpSpecification
 
 	public static void enforce(Response response)
 	{
-		int status = response.getResponseStatus().getCode();
+		int status = response.getResponseStatus().code();
 
 		if (is1xx(status))
 		{
@@ -94,7 +94,7 @@ public final class HttpSpecification
 		HttpResponseStatus status = response.getResponseStatus();
 		return !(HttpResponseStatus.NO_CONTENT.equals(status)
 		    || HttpResponseStatus.NOT_MODIFIED.equals(status)
-		    || is1xx(status.getCode()));
+		    || is1xx(status.code()));
 	}
 
 	// SECTION: UTILITY - PRIVATE

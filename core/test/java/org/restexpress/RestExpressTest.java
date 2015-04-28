@@ -28,7 +28,7 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpPut;
 import org.apache.http.impl.client.DefaultHttpClient;
-import org.jboss.netty.handler.codec.http.HttpHeaders;
+import io.netty.handler.codec.http.HttpHeaders;
 import org.junit.Test;
 import org.restexpress.Request;
 import org.restexpress.Response;
@@ -44,8 +44,6 @@ public class RestExpressTest
 	private static final String TEST_PATH = "/restexpress/test1";
 	private static final int TEST_PORT = 8901;
 	private static final String TEST_URL = "http://localhost:" + TEST_PORT + TEST_PATH;
-
-	private RestExpress server = new RestExpress();
 
 //	@Test
 //	public void shouldUseDefaults()
@@ -143,8 +141,9 @@ public class RestExpressTest
 	@Test
 	public void shouldNotUseSystemOut()
 	{
-		server.noSystemOut();
-		assertFalse(server.shouldUseSystemOut());
+		RestExpress re = new RestExpress();
+		re.noSystemOut();
+		assertFalse(re.shouldUseSystemOut());
 	}
 
 	@Test

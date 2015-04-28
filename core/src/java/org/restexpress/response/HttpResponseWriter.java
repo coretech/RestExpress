@@ -3,7 +3,7 @@
  */
 package org.restexpress.response;
 
-import org.jboss.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelHandlerContext;
 import org.restexpress.Request;
 import org.restexpress.Response;
 

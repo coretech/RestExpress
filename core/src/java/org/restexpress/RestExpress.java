@@ -16,6 +16,19 @@
  */
 package org.restexpress;
 
+import io.netty.bootstrap.ServerBootstrap;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandler;
+import io.netty.channel.ChannelOption;
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.group.ChannelGroup;
+import io.netty.channel.group.ChannelGroupFuture;
+import io.netty.channel.group.DefaultChannelGroup;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.util.concurrent.Future;
+import io.netty.util.concurrent.GlobalEventExecutor;
+
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -25,14 +38,6 @@ import java.util.Map;
 
 import javax.net.ssl.SSLContext;
 
-import org.jboss.netty.bootstrap.ServerBootstrap;
-import org.jboss.netty.channel.Channel;
-import org.jboss.netty.channel.ChannelHandler;
-import org.jboss.netty.channel.group.ChannelGroup;
-import org.jboss.netty.channel.group.ChannelGroupFuture;
-import org.jboss.netty.channel.group.DefaultChannelGroup;
-import org.jboss.netty.handler.execution.ExecutionHandler;
-import org.jboss.netty.handler.execution.OrderedMemoryAwareThreadPoolExecutor;
 import org.restexpress.domain.metadata.RouteMetadata;
 import org.restexpress.domain.metadata.ServerMetadata;
 import org.restexpress.exception.DefaultExceptionMapper;
@@ -40,7 +45,7 @@ import org.restexpress.exception.ExceptionMapping;
 import org.restexpress.exception.ServiceException;
 import org.restexpress.pipeline.DefaultRequestHandler;
 import org.restexpress.pipeline.MessageObserver;
-import org.restexpress.pipeline.PipelineBuilder;
+import org.restexpress.pipeline.PipelineInitializer;
 import org.restexpress.pipeline.Postprocessor;
 import org.restexpress.pipeline.Preprocessor;
 import org.restexpress.plugin.Plugin;
@@ -55,7 +60,6 @@ import org.restexpress.serialization.SerializationProvider;
 import org.restexpress.settings.RouteDefaults;
 import org.restexpress.settings.ServerSettings;
 import org.restexpress.settings.SocketSettings;
-import org.restexpress.util.Bootstraps;
 import org.restexpress.util.Callback;
 import org.restexpress.util.DefaultShutdownHook;
 
@@ -63,12 +67,12 @@ import org.restexpress.util.DefaultShutdownHook;
  * Primary entry point to create a RestExpress service. All that's required is a
  * RouteDeclaration. By default: port is 8081, serialization format is JSON,
  * supported formats are JSON and XML.
- * 
+ *
  * @author toddf
  */
 public class RestExpress
 {
-	private static final ChannelGroup allChannels = new DefaultChannelGroup("RestExpress");
+	private static final ChannelGroup allChannels = new DefaultChannelGroup("RestExpress", GlobalEventExecutor.INSTANCE);
 
 	public static final String DEFAULT_NAME = "RestExpress";
 	public static final int DEFAULT_PORT = 8081;
@@ -81,6 +85,8 @@ public class RestExpress
 	private RouteDefaults routeDefaults = new RouteDefaults();
 	private boolean enforceHttpSpec = false;
 	private boolean useSystemOut;
+	private EventLoopGroup bossGroup;
+	private EventLoopGroup workerGroup;
 
 	private List<MessageObserver> messageObservers = new ArrayList<MessageObserver>();
 	private List<Preprocessor> preprocessors = new ArrayList<Preprocessor>();
@@ -90,7 +96,7 @@ public class RestExpress
 	private List<Plugin> plugins = new ArrayList<Plugin>();
 	private RouteDeclaration routeDeclarations = new RouteDeclaration();
 	private SSLContext sslContext = null;
-	
+
 	/**
 	 * Change the default behavior for serialization.
 	 * If no SerializationProcessor is set, default of DefaultSerializationProcessor is used,
@@ -134,10 +140,6 @@ public class RestExpress
 	 * swapped out using the putSerializationProcessor(String,
 	 * SerializationProcessor) method, creating your own instance of
 	 * SerializationProcessor as necessary.
-	 * 
-	 * @param routes
-	 *            a RouteDeclaration that declares the URL routes that this
-	 *            service supports.
 	 */
 	public RestExpress()
 	{
@@ -151,12 +153,12 @@ public class RestExpress
 		this.sslContext = sslContext;
 		return this;
 	}
-	
+
 	public SSLContext getSSLContext()
 	{
 		return sslContext;
 	}
-	
+
 	public String getBaseUrl()
 	{
 		return routeDefaults.getBaseUrl();
@@ -170,7 +172,7 @@ public class RestExpress
 
 	/**
 	 * Get the name of this RestExpress service.
-	 * 
+	 *
 	 * @return a String representing the name of this service suite.
 	 */
 	public String getName()
@@ -180,7 +182,7 @@ public class RestExpress
 
 	/**
 	 * Set the name of this RestExpress service suite.
-	 * 
+	 *
 	 * @param name
 	 *            the name.
 	 * @return the RestExpress instance to facilitate DSL-style method chaining.
@@ -190,7 +192,7 @@ public class RestExpress
 		serverSettings.setName(name);
 		return this;
 	}
-	
+
 	public int getPort()
 	{
 		return serverSettings.getPort();
@@ -221,7 +223,7 @@ public class RestExpress
 	 * Add a Preprocessor instance that gets called before an incoming message
 	 * gets processed. Preprocessors get called in the order in which they are
 	 * added. To break out of the chain, simply throw an exception.
-	 * 
+	 *
 	 * @param processor
 	 * @return
 	 */
@@ -306,7 +308,7 @@ public class RestExpress
 		this.useSystemOut = useSystemOut;
 		return this;
 	}
-	
+
 	public RestExpress setEnforceHttpSpec(boolean enforceHttpSpec)
 	{
 		this.enforceHttpSpec = enforceHttpSpec;
@@ -398,7 +400,6 @@ public class RestExpress
 	}
 
 	/**
-	 * 
 	 * @param elementName
 	 * @param theClass
 	 * @return
@@ -424,7 +425,7 @@ public class RestExpress
 
 	/**
 	 * Return the number of requested NIO/HTTP-handling worker threads.
-	 * 
+	 *
 	 * @return the number of requested worker threads.
 	 */
 	public int getIoThreadCount()
@@ -449,17 +450,17 @@ public class RestExpress
 		serverSettings.setIoThreadCount(value);
 		return this;
 	}
-	
+
 	/**
 	 * Returns the number of background request-handling (executor) threads.
-	 * 
+	 *
 	 * @return the number of executor threads.
 	 */
 	public int getExecutorThreadCount()
 	{
 		return serverSettings.getExecutorThreadPoolSize();
 	}
-	
+
 	/**
 	 * Set the number of background request-handling (executor) threads.
 	 * This value controls the number of simultaneous blocking requests that
@@ -508,17 +509,18 @@ public class RestExpress
 		return bind((getPort() > 0 ? getPort() : DEFAULT_PORT));
 	}
 
-    /**
-     * Build a default request handler.  Used instead of bind() so it
-     * may be used injected into any existing Netty pipeline.
-     *
-     * @return ChannelHandler
-     */
+	/**
+	 * Build a default request handler. Used instead of bind() so it may be used
+	 * injected into any existing Netty pipeline.
+	 *
+	 * @return ChannelHandler
+	 */
 	public ChannelHandler buildRequestHandler()
 	{
 		// Set up the event pipeline factory.
 		DefaultRequestHandler requestHandler = new DefaultRequestHandler(
-		    createRouteResolver(), getSerializationProvider(), new DefaultHttpResponseWriter(), enforceHttpSpec);
+		    createRouteResolver(), getSerializationProvider(),
+		    new DefaultHttpResponseWriter(), enforceHttpSpec);
 
 		// Add MessageObservers to the request handler here, if desired...
 		requestHandler.addMessageObserver(messageObservers.toArray(new MessageObserver[0]));
@@ -536,7 +538,7 @@ public class RestExpress
 	/**
 	 * The last call in the building of a RestExpress server, bind() causes
 	 * Netty to bind to the listening address and process incoming messages.
-	 * 
+	 *
 	 * @return Channel
 	 */
 	public Channel bind(int port)
@@ -544,30 +546,15 @@ public class RestExpress
 		setPort(port);
 
 		// Configure the server.
-		if (getIoThreadCount() == 0)
-		{
-			bootstrap = Bootstraps.createServerNioBootstrap();
-		}
-		else
-		{
-			bootstrap = Bootstraps.createServerNioBootstrap(getIoThreadCount());
-		}
+		bossGroup = getEventExecutorsWithThreadCountOf(getIoThreadCount());
+		workerGroup = getEventExecutorsWithThreadCountOf(getExecutorThreadCount());
+		bootstrap = new ServerBootstrap().group(bossGroup, workerGroup)
+		    .channel(NioServerSocketChannel.class);
 
-        ChannelHandler requestHandler = buildRequestHandler();
+		bootstrap.childHandler(new PipelineInitializer()
+		    .addRequestHandler(buildRequestHandler()).setSSLContext(sslContext)
+		    .setMaxContentLength(serverSettings.getMaxContentSize()));
 
-		PipelineBuilder pf = new PipelineBuilder()
-		    .addRequestHandler(requestHandler)
-		    .setSSLContext(sslContext)
-		    .setMaxContentLength(serverSettings.getMaxContentSize());
-
-		if (getExecutorThreadCount() > 0)
-		{
-			ExecutionHandler executionHandler = new ExecutionHandler(
-	             new OrderedMemoryAwareThreadPoolExecutor(getExecutorThreadCount(), 0, 0));
-			pf.setExecutionHandler(executionHandler);
-		}
-
-		bootstrap.setPipelineFactory(pf);
 		setBootstrapOptions();
 
 		// Bind and start to accept incoming connections.
@@ -576,20 +563,37 @@ public class RestExpress
 			System.out.println(getName() + " server listening on port " + port);
 		}
 
-		Channel channel = bootstrap.bind(new InetSocketAddress(port));
+		Channel channel = bootstrap.bind(new InetSocketAddress(port)).channel();
 		allChannels.add(channel);
+
 		bindPlugins();
+
 		return channel;
+	}
+
+	private static NioEventLoopGroup getEventExecutorsWithThreadCountOf(
+	    int nThreads)
+	{
+		if (nThreads > 0)
+		{
+			return new NioEventLoopGroup(nThreads);
+		}
+		else
+		{
+			return new NioEventLoopGroup();
+		}
 	}
 
 	private void setBootstrapOptions()
 	{
-		bootstrap.setOption("child.tcpNoDelay", useTcpNoDelay());
-		bootstrap.setOption("child.keepAlive", serverSettings.isKeepAlive());
-		bootstrap.setOption("reuseAddress", shouldReuseAddress());
-		bootstrap.setOption("child.soLinger", getSoLinger());
-		bootstrap.setOption("connectTimeoutMillis", getConnectTimeoutMillis());
-		bootstrap.setOption("receiveBufferSize", getReceiveBufferSize());
+		bootstrap.option(ChannelOption.TCP_NODELAY, useTcpNoDelay());
+		bootstrap.option(ChannelOption.SO_KEEPALIVE,
+		    serverSettings.isKeepAlive());
+		bootstrap.option(ChannelOption.SO_REUSEADDR, shouldReuseAddress());
+		bootstrap.option(ChannelOption.SO_LINGER, getSoLinger());
+		bootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS,
+		    getConnectTimeoutMillis());
+		bootstrap.option(ChannelOption.SO_RCVBUF, getReceiveBufferSize());
 	}
 
 	/**
@@ -622,13 +626,36 @@ public class RestExpress
 	 * shutdown cleanly. Call this method to finish using the server. To utilize
 	 * the default shutdown hook in main() provided by RestExpress, call
 	 * awaitShutdown() instead.
+	 * <p/>
+	 * Same as shutdown(false);
 	 */
 	public void shutdown()
 	{
-		ChannelGroupFuture future = allChannels.close();
-		future.awaitUninterruptibly();
+		shutdown(false);
+	}
+
+	/**
+	 * Releases all resources associated with this server so the JVM can
+	 * shutdown cleanly. Call this method to finish using the server. To utilize
+	 * the default shutdown hook in main() provided by RestExpress, call
+	 * awaitShutdown() instead.
+	 * 
+	 * @param shouldWait true if shutdown() should wait for the shutdown of each thread group.
+	 */
+	public void shutdown(boolean shouldWait)
+	{
+		ChannelGroupFuture channelFuture = allChannels.close();
+		Future<?> bossFuture = bossGroup.shutdownGracefully();
+		Future<?> workerFuture = workerGroup.shutdownGracefully();
+
+		if (shouldWait)
+		{
+			bossFuture.awaitUninterruptibly();
+			workerFuture.awaitUninterruptibly();
+		}
+
+		channelFuture.awaitUninterruptibly();
 		shutdownPlugins();
-		bootstrap.getFactory().releaseExternalResources();
 	}
 
 	/**
@@ -641,7 +668,7 @@ public class RestExpress
 
 	/**
 	 * Retrieve metadata about the routes in this RestExpress server.
-	 * 
+	 *
 	 * @return ServerMetadata instance.
 	 */
 	public ServerMetadata getRouteMetadata()
@@ -649,22 +676,22 @@ public class RestExpress
 		ServerMetadata m = new ServerMetadata();
 		m.setName(getName());
 		m.setPort(getPort());
-		//TODO: create a good substitute for this...
-//		m.setDefaultFormat(getDefaultFormat());
-//		m.addAllSupportedFormats(getResponseProcessors().keySet());
+		// TODO: create a good substitute for this...
+		// m.setDefaultFormat(getDefaultFormat());
+		// m.addAllSupportedFormats(getResponseProcessors().keySet());
 		m.addAllRoutes(routeDeclarations.getMetadata());
 		return m;
 	}
 
 	/**
-	 * Retrieve the named routes in this RestExpress server, creating a Map
-	 * of them by name, with the value portion being populated with the URL
+	 * Retrieve the named routes in this RestExpress server, creating a Map of
+	 * them by name, with the value portion being populated with the URL
 	 * pattern. Any '.{format}' portion of the URL pattern is omitted.
 	 * <p/>
 	 * If the Base URL is set, it is included in the URL pattern.
 	 * <p/>
 	 * Only named routes are included in the output.
-	 * 
+	 *
 	 * @return a Map of Route Name/URL pairs.
 	 */
 	public Map<String, String> getRouteUrlsByName()
@@ -681,7 +708,7 @@ public class RestExpress
 				if (route.getName() != null)
 				{
 					urlsByName.put(route.getName(), getBaseUrl()
-						+ route.getUri().getPattern().replace(".{format}", ""));
+					    + route.getUri().getPattern().replace(".{format}", ""));
 				}
 			}
 		});
@@ -748,7 +775,6 @@ public class RestExpress
 			requestHandler.addFinallyProcessor(processor);
 		}
 	}
-
 
 	// SECTION: ROUTE CREATION
 

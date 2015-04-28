@@ -8,7 +8,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 
-import org.jboss.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.HttpMethod;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.restexpress.Request;

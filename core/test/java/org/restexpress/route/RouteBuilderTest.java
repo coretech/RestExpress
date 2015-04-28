@@ -3,7 +3,7 @@ package org.restexpress.route;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import org.jboss.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.HttpMethod;
 import org.junit.Test;
 import org.restexpress.Request;
 import org.restexpress.Response;

@@ -16,7 +16,7 @@
  */
 package org.restexpress;
 
-import static org.jboss.netty.handler.codec.http.HttpResponseStatus.OK;
+import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -24,8 +24,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.jboss.netty.handler.codec.http.HttpHeaders;
-import org.jboss.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.handler.codec.http.HttpHeaders;
+import io.netty.handler.codec.http.HttpResponseStatus;
 import org.restexpress.common.query.QueryRange;
 import org.restexpress.serialization.SerializationSettings;
 
@@ -132,10 +132,8 @@ public class Response
 	 * Add a "Content-Range" header to the response, setting it to the range and count.
 	 * This enables datagrid-style pagination support.
 	 * 
-	 * @param response
 	 * @param range
 	 * @param count
-	 * @param size
 	 */
 	public void addRangeHeader(QueryRange range, long count)
 	{
@@ -152,13 +150,19 @@ public class Response
 	 * the requested QueryRange, returned collection size and maximum data set size.
 	 * 
 	 * @param queryRange
-	 * @param results
+	 * @param size
 	 * @param count
 	 */
 	public void setCollectionResponse(QueryRange queryRange, int size, long count)
 	{
 		QueryRange range = queryRange.clone();
-		
+
+		if (count < 0)
+		{
+			addRangeHeader(range, count);
+			return;
+		}
+
 		if (range.isOutside(size, count))
 		{
 			setResponseCode(416);

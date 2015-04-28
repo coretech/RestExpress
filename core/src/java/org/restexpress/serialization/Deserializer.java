@@ -17,7 +17,7 @@
 
 package org.restexpress.serialization;
 
-import org.jboss.netty.buffer.ChannelBuffer;
+import io.netty.buffer.ByteBuf;
 
 
 
@@ -28,5 +28,5 @@ import org.jboss.netty.buffer.ChannelBuffer;
 public interface Deserializer
 {
 	public <T> T deserialize(String string, Class<T> type);
-	public <T> T deserialize(ChannelBuffer buffer, Class<T> type);
+	public <T> T deserialize(ByteBuf buffer, Class<T> type);
 }
